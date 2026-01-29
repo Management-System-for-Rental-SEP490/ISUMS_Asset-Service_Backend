@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.isums.assetservice.grpc";
+option java_outer_classname = "HouseProto";
+
+service HouseService {
+  rpc GetHouseById (GetHouseRequest) returns (HouseResponse);
+}
+
+message GetHouseRequest {
+  string houseId = 1;
+}
+
+message HouseResponse {
+  string id = 1;
+}

@@ -1,0 +1,32 @@
+package com.isums.assetservice.controllers;
+
+
+import com.isums.assetservice.abstracts.AssetCategoryService;
+import com.isums.assetservice.domains.dtos.ApiResponse;
+import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
+import com.isums.assetservice.domains.dtos.AssetCategoryDTO.CreateAssetCategoryRequest;
+import com.isums.assetservice.domains.entities.AssetCategory;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/asset-categories")
+@RequiredArgsConstructor
+public class AssetCategoryController {
+    private final AssetCategoryService assetCategoryService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<AssetCategoryDto>>> GetAllAssetCategories(){
+        ApiResponse<List<AssetCategoryDto>> response = assetCategoryService.getAllAssetCategories();
+        return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<AssetCategory>> CreateAssetCategory(@RequestBody CreateAssetCategoryRequest request){
+        ApiResponse<AssetCategory> response = assetCategoryService.createAssetCategory(request);
+        return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
+}
