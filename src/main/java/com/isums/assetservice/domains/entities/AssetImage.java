@@ -23,9 +23,9 @@ public class AssetImage {
     @UuidGenerator
     private UUID id;
 
-    private String key;
-
     private String imageUrl;
+
+    private String note;
 
     private Instant createAt;
 
