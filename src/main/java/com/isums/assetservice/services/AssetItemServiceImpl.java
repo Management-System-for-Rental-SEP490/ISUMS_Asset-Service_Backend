@@ -3,11 +3,13 @@ package com.isums.assetservice.services;
 import com.isums.assetservice.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
+import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
+import com.isums.assetservice.domains.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class AssetItemServiceImpl implements AssetItemService {
     private final AssetItemQuery assetItemQuery;
     private final AssetCategoryRepository assetCategoryRepository;
+    private final AssetMapper assetMapper;
 
     @Override
     public ApiResponse<AssetItem> CreateAssetItem(CreateAssetItemRequest request) {
@@ -48,10 +51,10 @@ public class AssetItemServiceImpl implements AssetItemService {
     }
 
     @Override
-    public ApiResponse<List<AssetItem>> GetAllAssetItems() {
+    public ApiResponse<List<AssetItemDto>> GetAllAssetItems() {
          try{
-             List<AssetItem> assetItems = assetItemQuery.GetAllAssetItems();
-             return ApiResponses.created(assetItems,"Get all items successfully");
+             List<AssetItemDto> mapAssetItems = assetItemQuery.GetAllAssetItems();
+             return ApiResponses.ok(mapAssetItems,"Get all items successfully");
 
          } catch (Exception ex) {
              return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to get all items: " +ex.getMessage());
@@ -59,7 +62,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     }
 
     @Override
-    public ApiResponse<AssetItem> UpdateAssetItem(UUID id,UpdateAssetItemRequest request) {
+    public ApiResponse<AssetItemDto> UpdateAssetItem(UUID id,UpdateAssetItemRequest request) {
         try{
             AssetItem assetItem = assetItemQuery.findById(id);
             if(assetItem == null){
@@ -88,7 +91,8 @@ public class AssetItemServiceImpl implements AssetItemService {
                 assetItem.setStatus(request.status());
 
             AssetItem updated = assetItemQuery.createAssetItem(assetItem);
-            return ApiResponses.ok(updated, "Update asset successfully");
+            AssetItemDto assetItemDto = assetMapper.mapAssetItem(updated);
+            return ApiResponses.ok(assetItemDto, "Update asset successfully");
 
         } catch (Exception ex) {
             return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to get all items: " +ex.getMessage());
@@ -103,7 +107,7 @@ public class AssetItemServiceImpl implements AssetItemService {
                 return ApiResponses.fail(HttpStatus.NOT_FOUND, "Asset not found");
             }
 
-            assetItem.setStatus(AssetStatus.DELETED);
+            assetItem.setStatus(AssetStatus.DISPOSED);
             assetItemQuery.createAssetItem(assetItem);
 
             return ApiResponses.ok(null, "Asset deleted (soft)");

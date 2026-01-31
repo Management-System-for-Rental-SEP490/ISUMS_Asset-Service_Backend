@@ -4,6 +4,7 @@ package com.isums.assetservice.controllers;
 import com.google.protobuf.Api;
 import com.isums.assetservice.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
+import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.entities.AssetItem;
@@ -21,8 +22,8 @@ public class AssetItemController {
     private final AssetItemService assetItemService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AssetItem>>> GetAllAssetItems(){
-        ApiResponse<List<AssetItem>> response = assetItemService.GetAllAssetItems();
+    public ResponseEntity<ApiResponse<List<AssetItemDto>>> GetAllAssetItems(){
+        ApiResponse<List<AssetItemDto>> response = assetItemService.GetAllAssetItems();
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
@@ -33,8 +34,8 @@ public class AssetItemController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<AssetItem>> UpdateAssetItem(@PathVariable UUID id , @RequestBody UpdateAssetItemRequest request){
-        ApiResponse<AssetItem> response =assetItemService.UpdateAssetItem(id,request);
+    public ResponseEntity<ApiResponse<AssetItemDto>> UpdateAssetItem(@PathVariable UUID id , @RequestBody UpdateAssetItemRequest request){
+        ApiResponse<AssetItemDto> response =assetItemService.UpdateAssetItem(id,request);
         return ResponseEntity.status(response.getStatusCode()).body(response);
 
     }

@@ -7,6 +7,8 @@ import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.CreateAssetImageRequest;
 import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.domains.entities.AssetItem;
+import com.isums.assetservice.domains.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,15 +20,16 @@ import java.util.List;
 @Service
 public class AssetImageServiceImpl implements AssetImageService {
     private final AssetImageQuery assetImageQuery;
-    private final AssetItemQuery assetItemQuery;
+    private final AssetItemRepository assetItemRepository;
+    private final AssetMapper assetMapper;
 
     @Override
-    public ApiResponse<AssetImage> createImage(CreateAssetImageRequest request) {
+    public ApiResponse<AssetImageDto> createImage(CreateAssetImageRequest request) {
         try{
-            AssetItem assetItem = assetItemQuery.findById(request.assetId());
-            if (assetItem == null) {
-                return ApiResponses.fail(HttpStatus.NOT_FOUND, "Asset not found");
-            }
+
+            AssetItem assetItem = assetItemRepository
+                    .findById(request.assetId())
+                    .orElseThrow(() -> new RuntimeException("AssetItem not found"));
 
             if (request.imageUrl() == null || request.imageUrl().isBlank()) {
                 return ApiResponses.fail(HttpStatus.BAD_REQUEST, "ImageUrl required");
@@ -39,9 +42,10 @@ public class AssetImageServiceImpl implements AssetImageService {
                     .build();
 
             AssetImage created = assetImageQuery.createAssetImage(assetImage);
-            return ApiResponses.ok(created,"Create Image successfully");
+            AssetImageDto assetImageDto = assetMapper.mapAssetImage((created));
+            return ApiResponses.created(assetImageDto,"Create Image successfully");
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to create item" + ex.getMessage());
+            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to create item " + ex.getMessage());
         }
     }
 

@@ -14,7 +14,7 @@ import java.util.UUID;
 public class AssetItemDto {
     private UUID id;
     private UUID houseId;
-    private AssetCategory category;
+    private UUID categoryId;
     private String displayName;
     private String serialNumber;
     private String nfcId;

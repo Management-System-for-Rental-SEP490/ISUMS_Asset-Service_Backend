@@ -30,6 +30,6 @@ public class AssetImage {
     private Instant createAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "asset_id")
+    @JoinColumn(name = "asset_id",nullable = false)
     private AssetItem assetItem;
 }

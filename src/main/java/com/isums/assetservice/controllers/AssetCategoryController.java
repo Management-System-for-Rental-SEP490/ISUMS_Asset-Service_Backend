@@ -33,8 +33,8 @@ public class AssetCategoryController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<AssetCategory>> updateAssetCategory(@PathVariable UUID id, @RequestBody UpdateAssetCategoryRequest request){
-        ApiResponse<AssetCategory> response = assetCategoryService.updateAssetCategory(id,request);
+    public ResponseEntity<ApiResponse<AssetCategoryDto>> updateAssetCategory(@PathVariable UUID id, @RequestBody UpdateAssetCategoryRequest request){
+        ApiResponse<AssetCategoryDto> response = assetCategoryService.updateAssetCategory(id,request);
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 }

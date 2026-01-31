@@ -10,6 +10,7 @@ import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.CreateAssetCategoryRequest;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.UpdateAssetCategoryRequest;
 import com.isums.assetservice.domains.entities.AssetCategory;
+import com.isums.assetservice.domains.mapper.AssetMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AssetCategoryServiceImpl implements AssetCategoryService {
     private final AssetCategoryQuery assetCategoryQuery;
+    private final AssetMapper assetMapper;
 
     @Override
     public ApiResponse<AssetCategory> createAssetCategory(CreateAssetCategoryRequest request) {
@@ -49,7 +51,7 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
     }
 
     @Override
-    public ApiResponse<AssetCategory> updateAssetCategory(UUID id,UpdateAssetCategoryRequest request) {
+    public ApiResponse<AssetCategoryDto> updateAssetCategory(UUID id,UpdateAssetCategoryRequest request) {
         try {
             AssetCategory assetCategory = assetCategoryQuery.findById(id);
             if(assetCategory == null){
@@ -83,8 +85,9 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
             }
 
             AssetCategory updated = assetCategoryQuery.createAssetCategory(assetCategory);
+            AssetCategoryDto assetCategoryDto = assetMapper.mapAssetCategory(updated);
 
-            return ApiResponses.ok(updated,"Update asset category successfully");
+            return ApiResponses.ok(assetCategoryDto,"Update asset category successfully");
 
 
         } catch (Exception ex) {

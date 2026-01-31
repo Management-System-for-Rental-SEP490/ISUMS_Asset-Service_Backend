@@ -12,7 +12,7 @@ import java.util.UUID;
 public interface AssetCategoryService {
     ApiResponse<AssetCategory> createAssetCategory(CreateAssetCategoryRequest request);
     ApiResponse<List<AssetCategoryDto>> getAllAssetCategories();
-    ApiResponse<AssetCategory> updateAssetCategory(UUID id,UpdateAssetCategoryRequest request);
+    ApiResponse<AssetCategoryDto> updateAssetCategory(UUID id,UpdateAssetCategoryRequest request);
     ApiResponse<Void> deleteAssetCategory(UUID id);
 
 }

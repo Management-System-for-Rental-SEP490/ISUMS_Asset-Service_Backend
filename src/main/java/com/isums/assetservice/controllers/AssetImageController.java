@@ -9,10 +9,7 @@ import com.isums.assetservice.domains.dtos.AssetImageDTO.CreateAssetImageRequest
 import com.isums.assetservice.domains.entities.AssetImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -29,8 +26,8 @@ public class AssetImageController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AssetImage>> createAssetImage(CreateAssetImageRequest request){
-        ApiResponse<AssetImage> response = assetImageService.createImage(request);
+    public ResponseEntity<ApiResponse<AssetImageDto>> createAssetImage(@RequestBody CreateAssetImageRequest request){
+        ApiResponse<AssetImageDto> response = assetImageService.createImage(request);
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 }
