@@ -23,13 +23,13 @@ public class AssetImage {
     @UuidGenerator
     private UUID id;
 
-    private String key;
-
     private String imageUrl;
+
+    private String note;
 
     private Instant createAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "asset_id")
+    @JoinColumn(name = "asset_id",nullable = false)
     private AssetItem assetItem;
 }
