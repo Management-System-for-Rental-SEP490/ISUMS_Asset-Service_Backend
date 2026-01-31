@@ -36,5 +36,5 @@ public class AssetEvent {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_id")
-    private AssetItem assetEvent;
+    private AssetItem assetItem;
 }
