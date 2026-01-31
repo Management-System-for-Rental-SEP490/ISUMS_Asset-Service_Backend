@@ -1,8 +1,6 @@
 package com.isums.assetservice.controllers;
 
-
-import com.google.protobuf.Api;
-import com.isums.assetservice.abstracts.AssetItemService;
+import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;

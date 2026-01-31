@@ -1,11 +1,9 @@
 package com.isums.assetservice.controllers;
 
-import com.isums.assetservice.abstracts.AssetEventService;
+import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
-import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.CreateAssetEventRequest;
-import com.isums.assetservice.domains.entities.AssetEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;

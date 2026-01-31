@@ -1,6 +1,6 @@
 package com.isums.assetservice.services;
 
-import com.isums.assetservice.abstracts.AssetEventService;
+import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;

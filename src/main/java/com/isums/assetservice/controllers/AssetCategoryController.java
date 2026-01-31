@@ -1,7 +1,7 @@
 package com.isums.assetservice.controllers;
 
 
-import com.isums.assetservice.abstracts.AssetCategoryService;
+import com.isums.assetservice.infrastructures.abstracts.AssetCategoryService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.CreateAssetCategoryRequest;

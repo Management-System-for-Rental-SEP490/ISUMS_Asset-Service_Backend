@@ -1,9 +1,6 @@
 package com.isums.assetservice.services;
 
-
-import com.google.api.Http;
-import com.google.protobuf.Api;
-import com.isums.assetservice.abstracts.AssetCategoryService;
+import com.isums.assetservice.infrastructures.abstracts.AssetCategoryService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;

@@ -1,12 +1,9 @@
 package com.isums.assetservice.controllers;
 
-
-import com.isums.assetservice.abstracts.AssetImageService;
-import com.isums.assetservice.abstracts.AssetItemService;
+import com.isums.assetservice.infrastructures.abstracts.AssetImageService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.CreateAssetImageRequest;
-import com.isums.assetservice.domains.entities.AssetImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
