@@ -1,7 +1,11 @@
 package com.isums.assetservice.services;
 
 
+<<<<<<< Updated upstream
 import com.isums.assetservice.abstracts.AssetCategoryService;
+=======
+import com.isums.assetservice.infrastructures.abstracts.AssetCategoryService;
+>>>>>>> Stashed changes
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;

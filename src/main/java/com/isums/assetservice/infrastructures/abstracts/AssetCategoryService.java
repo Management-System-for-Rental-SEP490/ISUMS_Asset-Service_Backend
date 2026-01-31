@@ -1,4 +1,4 @@
-package com.isums.assetservice.abstracts;
+package com.isums.assetservice.infrastructures.abstracts;
 
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;

@@ -48,6 +48,6 @@ public class AssetItem {
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @OneToMany(mappedBy = "assetEvent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "assetItem", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AssetEvent> events = new ArrayList<>();
 }

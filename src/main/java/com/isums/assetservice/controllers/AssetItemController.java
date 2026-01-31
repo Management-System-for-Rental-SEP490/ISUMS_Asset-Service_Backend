@@ -1,7 +1,11 @@
 package com.isums.assetservice.controllers;
 
 
+<<<<<<< Updated upstream
 import com.isums.assetservice.abstracts.AssetItemService;
+=======
+import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
+>>>>>>> Stashed changes
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.entities.AssetItem;
