@@ -9,9 +9,10 @@ service HouseService {
 }
 
 message GetHouseRequest {
-  string houseId = 1;
+  string id = 1;
 }
 
 message HouseResponse {
   string id = 1;
+  string name = 2;
 }

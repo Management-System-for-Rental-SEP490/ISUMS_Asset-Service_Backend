@@ -11,6 +11,7 @@ import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.domains.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
+import com.isums.assetservice.infrastructures.rgpc.GrpcHouseClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,10 +25,12 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetItemQuery assetItemQuery;
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetMapper assetMapper;
+    private final GrpcHouseClient grpcHouseClient;
 
     @Override
     public ApiResponse<AssetItem> CreateAssetItem(CreateAssetItemRequest request) {
         try{
+            grpcHouseClient.getHouseById(request.houseId().toString());
             AssetCategory assetCategory = assetCategoryRepository
                     .findById(request.categoryId())
                     .orElseThrow(() -> new RuntimeException("AssetCategory not found"));

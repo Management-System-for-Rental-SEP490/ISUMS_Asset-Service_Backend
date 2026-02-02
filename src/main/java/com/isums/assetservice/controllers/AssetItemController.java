@@ -6,6 +6,7 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.entities.AssetItem;
+import com.isums.assetservice.infrastructures.rgpc.GrpcHouseClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
