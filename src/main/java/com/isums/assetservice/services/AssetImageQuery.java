@@ -1,12 +1,8 @@
 package com.isums.assetservice.services;
 
-import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
-import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetImage;
-import com.isums.assetservice.domains.entities.AssetItem;
-import com.isums.assetservice.domains.mapper.AssetMapper;
-import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
+import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;

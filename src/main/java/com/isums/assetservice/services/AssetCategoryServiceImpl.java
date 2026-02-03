@@ -7,7 +7,7 @@ import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.CreateAssetCategoryRequest;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.UpdateAssetCategoryRequest;
 import com.isums.assetservice.domains.entities.AssetCategory;
-import com.isums.assetservice.domains.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

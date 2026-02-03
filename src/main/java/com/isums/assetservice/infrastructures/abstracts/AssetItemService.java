@@ -14,5 +14,5 @@ public interface AssetItemService {
     ApiResponse<List<AssetItemDto>> GetAllAssetItems();
     ApiResponse<AssetItemDto> UpdateAssetItem(UUID id,UpdateAssetItemRequest request);
     ApiResponse<Void> deleteAssetItem(UUID id);
-
+    AssetItemDto getAssetItemById(UUID id);
 }

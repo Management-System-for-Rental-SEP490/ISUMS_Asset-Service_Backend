@@ -1,4 +1,4 @@
-package com.isums.assetservice.domains.mapper;
+package com.isums.assetservice.infrastructures.mapper;
 
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;

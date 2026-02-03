@@ -9,8 +9,9 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
-import com.isums.assetservice.domains.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
+import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetItemQuery assetItemQuery;
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetMapper assetMapper;
+    private final AssetItemRepository assetItemRepository;
 
     @Override
     public ApiResponse<AssetItem> CreateAssetItem(CreateAssetItemRequest request) {
@@ -113,6 +115,20 @@ public class AssetItemServiceImpl implements AssetItemService {
             return ApiResponses.ok(null, "Asset deleted (soft)");
         } catch (Exception ex) {
             return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to get all items: " +ex.getMessage());
+        }
+    }
+
+    @Override
+    public AssetItemDto getAssetItemById(UUID id) {
+        try{
+
+            AssetItem assetItem = assetItemRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("AssetItem with ID: " + id + " not found"));
+
+            return assetMapper.mapAssetItem(assetItem);
+
+        }  catch (Exception ex) {
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
     }
 }
