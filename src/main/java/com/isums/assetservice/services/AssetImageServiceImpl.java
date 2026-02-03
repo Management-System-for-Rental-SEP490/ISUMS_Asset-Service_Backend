@@ -7,7 +7,7 @@ import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.CreateAssetImageRequest;
 import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.domains.entities.AssetItem;
-import com.isums.assetservice.domains.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -38,7 +38,7 @@ public class AssetImageServiceImpl implements AssetImageService {
                     .assetItem(assetItem)
                     .imageUrl(request.imageUrl())
                     .note(request.note())
-                    .createAt(Instant.now())
+                    .createdAt(Instant.now())
                     .build();
 
             AssetImage created = assetImageQuery.createAssetImage(assetImage);
