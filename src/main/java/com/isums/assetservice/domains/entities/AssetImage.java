@@ -27,7 +27,7 @@ public class AssetImage {
 
     private String note;
 
-    private Instant createAt;
+    private Instant createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_id",nullable = false)

@@ -1,5 +1,6 @@
 package com.isums.assetservice.controllers;
 
+import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/asset-items")
+@RequestMapping("/asset/items")
 @RequiredArgsConstructor
 public class AssetItemController {
     private final AssetItemService assetItemService;
@@ -43,5 +44,11 @@ public class AssetItemController {
         ApiResponse<Void> response = assetItemService.deleteAssetItem(id);
         return ResponseEntity.status(response.getStatusCode()).body(response);
 
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse<AssetItemDto> GetAssetItem(@PathVariable UUID id){
+        AssetItemDto res = assetItemService.getAssetItemById(id);
+        return ApiResponses.ok(res, "Success to get asset item");
     }
 }

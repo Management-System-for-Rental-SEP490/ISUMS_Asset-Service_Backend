@@ -8,7 +8,7 @@ import com.isums.assetservice.domains.dtos.AssetEventDTO.CreateAssetEventRequest
 import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetEventType;
-import com.isums.assetservice.domains.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
