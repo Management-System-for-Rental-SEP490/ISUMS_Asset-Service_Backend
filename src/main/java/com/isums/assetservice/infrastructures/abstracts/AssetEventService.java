@@ -10,6 +10,6 @@ import com.isums.assetservice.domains.entities.AssetEvent;
 import java.util.List;
 
 public interface AssetEventService {
-    ApiResponse<AssetEventDto> createEvent(CreateAssetEventRequest request);
-    ApiResponse<List<AssetEventDto>> getAllAssetEvents();
+    AssetEventDto createEvent(CreateAssetEventRequest request);
+    List<AssetEventDto> getAllAssetEvents();
 }

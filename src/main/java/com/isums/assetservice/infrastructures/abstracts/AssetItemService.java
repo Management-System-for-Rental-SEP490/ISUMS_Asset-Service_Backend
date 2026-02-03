@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AssetItemService {
-    ApiResponse<AssetItem> CreateAssetItem(CreateAssetItemRequest request);
-    ApiResponse<List<AssetItemDto>> GetAllAssetItems();
-    ApiResponse<AssetItemDto> UpdateAssetItem(UUID id,UpdateAssetItemRequest request);
-    ApiResponse<Void> deleteAssetItem(UUID id);
+    AssetItemDto CreateAssetItem(CreateAssetItemRequest request);
+    List<AssetItemDto> GetAllAssetItems();
+    AssetItemDto UpdateAssetItem(UUID id,UpdateAssetItemRequest request);
+    Boolean deleteAssetItem(UUID id);
     AssetItemDto getAssetItemById(UUID id);
 }

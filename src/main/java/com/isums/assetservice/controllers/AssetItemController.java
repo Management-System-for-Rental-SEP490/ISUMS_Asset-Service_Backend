@@ -21,28 +21,28 @@ public class AssetItemController {
     private final AssetItemService assetItemService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AssetItemDto>>> GetAllAssetItems(){
-        ApiResponse<List<AssetItemDto>> response = assetItemService.GetAllAssetItems();
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    public ApiResponse<List<AssetItemDto>> GetAllAssetItems(){
+        List<AssetItemDto> response = assetItemService.GetAllAssetItems();
+        return ApiResponses.ok(response,"Get all items successfully");
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AssetItem>> CreateAssetItem(@RequestBody CreateAssetItemRequest request){
-        ApiResponse<AssetItem> response = assetItemService.CreateAssetItem(request);
-        return  ResponseEntity.status(response.getStatusCode()).body(response);
+    public ApiResponse<AssetItemDto> CreateAssetItem(@RequestBody CreateAssetItemRequest request){
+        AssetItemDto response = assetItemService.CreateAssetItem(request);
+        return  ApiResponses.ok(response,"Create item successfully");
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<AssetItemDto>> UpdateAssetItem(@PathVariable UUID id , @RequestBody UpdateAssetItemRequest request){
-        ApiResponse<AssetItemDto> response =assetItemService.UpdateAssetItem(id,request);
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    public ApiResponse<AssetItemDto> UpdateAssetItem(@PathVariable UUID id , @RequestBody UpdateAssetItemRequest request){
+        AssetItemDto response =assetItemService.UpdateAssetItem(id,request);
+        return ApiResponses.ok(response,"Update item successfully");
 
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> DeleteAssetItem(@PathVariable UUID id){
-        ApiResponse<Void> response = assetItemService.deleteAssetItem(id);
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    public ApiResponse<Boolean> DeleteAssetItem(@PathVariable UUID id){
+        Boolean response = assetItemService.deleteAssetItem(id);
+        return ApiResponses.ok(response,"Delete item succesfully");
 
     }
 

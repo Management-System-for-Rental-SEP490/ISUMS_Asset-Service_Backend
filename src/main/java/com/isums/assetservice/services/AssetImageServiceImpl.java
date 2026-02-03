@@ -8,6 +8,7 @@ import com.isums.assetservice.domains.dtos.AssetImageDTO.CreateAssetImageRequest
 import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.repositories.AssetImageRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,12 +20,12 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 public class AssetImageServiceImpl implements AssetImageService {
-    private final AssetImageQuery assetImageQuery;
+    private final AssetImageRepository assetImageRepository;
     private final AssetItemRepository assetItemRepository;
     private final AssetMapper assetMapper;
 
     @Override
-    public ApiResponse<AssetImageDto> createImage(CreateAssetImageRequest request) {
+    public AssetImageDto createImage(CreateAssetImageRequest request) {
         try{
 
             AssetItem assetItem = assetItemRepository
@@ -32,7 +33,7 @@ public class AssetImageServiceImpl implements AssetImageService {
                     .orElseThrow(() -> new RuntimeException("AssetItem not found"));
 
             if (request.imageUrl() == null || request.imageUrl().isBlank()) {
-                return ApiResponses.fail(HttpStatus.BAD_REQUEST, "ImageUrl required");
+                throw new RuntimeException("imageUrl not found");
             }
             AssetImage assetImage = AssetImage.builder()
                     .assetItem(assetItem)
@@ -41,21 +42,22 @@ public class AssetImageServiceImpl implements AssetImageService {
                     .createdAt(Instant.now())
                     .build();
 
-            AssetImage created = assetImageQuery.createAssetImage(assetImage);
-            AssetImageDto assetImageDto = assetMapper.mapAssetImage((created));
-            return ApiResponses.created(assetImageDto,"Create Image successfully");
+            AssetImage created = assetImageRepository.save(assetImage);
+            return assetMapper.mapAssetImage(assetImage);
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to create item " + ex.getMessage());
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());         }
         }
-    }
 
     @Override
-    public ApiResponse<List<AssetImageDto>> getAllAssetImages() {
+    public List<AssetImageDto> getAllAssetImages() {
         try{
-            List<AssetImageDto> mapAssetImages = assetImageQuery.getAllAsset();
-            return ApiResponses.ok(mapAssetImages,"Get all images successfully");
+            List<AssetImage> mapAssetImages = assetImageRepository.findAll();
+            return assetMapper.maAssetImages(mapAssetImages);
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to create item" + ex.getMessage());
-        }
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());         }
     }
 }
+
+
+
+

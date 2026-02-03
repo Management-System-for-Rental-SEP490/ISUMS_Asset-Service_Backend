@@ -22,13 +22,12 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AssetItemServiceImpl implements AssetItemService {
-    private final AssetItemQuery assetItemQuery;
+    private final AssetItemRepository assetItemRepository;
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetMapper assetMapper;
-    private final AssetItemRepository assetItemRepository;
 
     @Override
-    public ApiResponse<AssetItem> CreateAssetItem(CreateAssetItemRequest request) {
+    public AssetItemDto CreateAssetItem(CreateAssetItemRequest request) {
         try{
             AssetCategory assetCategory = assetCategoryRepository
                     .findById(request.categoryId())
@@ -44,36 +43,33 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .status(AssetStatus.AVAILABLE)
                     .build();
 
-            AssetItem created = assetItemQuery.createAssetItem(assetItem);
+            AssetItem created = assetItemRepository.save(assetItem);
 
-            return ApiResponses.created(created,"Item created successfully");
+            return assetMapper.mapAssetItem(created);
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to create item" + ex.getMessage());
-        }
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());        }
     }
 
     @Override
-    public ApiResponse<List<AssetItemDto>> GetAllAssetItems() {
+    public List<AssetItemDto> GetAllAssetItems() {
          try{
-             List<AssetItemDto> mapAssetItems = assetItemQuery.GetAllAssetItems();
-             return ApiResponses.ok(mapAssetItems,"Get all items successfully");
+             List<AssetItem> mapAssetItems = assetItemRepository.findAll();
+             return assetMapper.mapAssetItems(mapAssetItems);
 
          } catch (Exception ex) {
-             return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to get all items: " +ex.getMessage());
-         }
+             throw new RuntimeException("Error to get asset item: " + ex.getMessage());         }
     }
 
     @Override
-    public ApiResponse<AssetItemDto> UpdateAssetItem(UUID id,UpdateAssetItemRequest request) {
+    public AssetItemDto UpdateAssetItem(UUID id,UpdateAssetItemRequest request) {
         try{
-            AssetItem assetItem = assetItemQuery.findById(id);
-            if(assetItem == null){
-                return ApiResponses.fail(HttpStatus.NOT_FOUND,"Id not found");
-            }
+            AssetItem assetItem = assetItemRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Id not found"));
+
 
             if(request.conditionPercent() != null){
                 if(request.conditionPercent() <0 || request.conditionPercent() > 100){
-                    return  ApiResponses.fail(HttpStatus.BAD_REQUEST,"conditionPercent must be 0-100");
+                    throw new RuntimeException("conditionPercent must be 0-100");
                 }
             }
 
@@ -92,29 +88,26 @@ public class AssetItemServiceImpl implements AssetItemService {
             if (request.status() != null)
                 assetItem.setStatus(request.status());
 
-            AssetItem updated = assetItemQuery.createAssetItem(assetItem);
-            AssetItemDto assetItemDto = assetMapper.mapAssetItem(updated);
-            return ApiResponses.ok(assetItemDto, "Update asset successfully");
+            AssetItem updated = assetItemRepository.save(assetItem);
+            return assetMapper.mapAssetItem(updated);
 
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to get all items: " +ex.getMessage());
-        }
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());        }
     }
 
     @Override
-    public ApiResponse<Void> deleteAssetItem(UUID id) {
+    public Boolean deleteAssetItem(UUID id) {
         try{
-            AssetItem assetItem = assetItemQuery.findById(id);
-            if (assetItem == null) {
-                return ApiResponses.fail(HttpStatus.NOT_FOUND, "Asset not found");
-            }
+            AssetItem assetItem = assetItemRepository.findById(id)
+                            .orElseThrow(() -> new RuntimeException("Id not found"));
+
 
             assetItem.setStatus(AssetStatus.DISPOSED);
-            assetItemQuery.createAssetItem(assetItem);
+            assetItemRepository.save(assetItem);
 
-            return ApiResponses.ok(null, "Asset deleted (soft)");
+            return true;
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to get all items: " +ex.getMessage());
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
     }
 

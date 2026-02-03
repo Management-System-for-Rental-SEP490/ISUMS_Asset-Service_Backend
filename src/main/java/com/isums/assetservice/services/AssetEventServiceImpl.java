@@ -9,6 +9,7 @@ import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetEventType;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,12 +21,12 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AssetEventServiceImpl implements AssetEventService {
-    private final AssetEventQuery assetEventQuery;
+    private final AssetEventRepository assetEventRepository;
     private final AssetItemRepository assetItemRepository;
     private final AssetMapper assetMapper;
 
     @Override
-    public ApiResponse<AssetEventDto> createEvent(CreateAssetEventRequest request) {
+    public AssetEventDto createEvent(CreateAssetEventRequest request) {
         try{
             AssetItem assetItem = assetItemRepository
                     .findById(request.assetId())
@@ -39,23 +40,22 @@ public class AssetEventServiceImpl implements AssetEventService {
                     .createBy(request.createBy())
                     .build();
 
-            AssetEvent create = assetEventQuery.createAsset(assetEvent);
-            AssetEventDto assetEventDto = assetMapper.mapAssetEvent(assetEvent);
+            AssetEvent create = assetEventRepository.save(assetEvent);
+            return assetMapper.mapAssetEvent(create);
 
-            return ApiResponses.created(assetEventDto,"Create event succesfully");
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to create item " + ex.getMessage());
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
     }
 
     @Override
-    public ApiResponse<List<AssetEventDto>> getAllAssetEvents() {
+    public List<AssetEventDto> getAllAssetEvents() {
         try{
-            List<AssetEventDto> assetEventDtos = assetEventQuery.getAllAsset();
+            List<AssetEvent> assetEventDto = assetEventRepository.findAll();
 
-            return ApiResponses.ok(assetEventDtos,"Get all events successfully");
+            return assetMapper.maAssetEvents(assetEventDto);
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR,"fail to create item " + ex.getMessage());
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
     }
 }
