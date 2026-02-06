@@ -1,5 +1,6 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.AssetEventDTO.UpdateAssetEventRequest;
 import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -54,6 +56,26 @@ public class AssetEventServiceImpl implements AssetEventService {
             List<AssetEvent> assetEventDto = assetEventRepository.findAll();
 
             return assetMapper.maAssetEvents(assetEventDto);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
+        }
+    }
+
+    @Override
+    public AssetEventDto updateEventStatus(UUID id, UpdateAssetEventRequest request) {
+        try{
+            AssetEvent event = assetEventRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Id not found"));
+            if(request.status() == null){
+                throw new RuntimeException("Status is required");
+            }
+
+            event.setEventType(request.status());
+
+            AssetEvent updated = assetEventRepository.save(event);
+
+            return assetMapper.mapAssetEvent(updated);
+
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
