@@ -6,7 +6,8 @@ import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -44,10 +45,12 @@ public class AssetItem {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "assetItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<AssetImage> images = new ArrayList<>();
+    @Builder.Default
+    private Set<AssetImage> images = new LinkedHashSet<>();
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "assetItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<AssetEvent> events = new ArrayList<>();
+    @Builder.Default
+    private Set<AssetEvent> events = new LinkedHashSet<>();
 }

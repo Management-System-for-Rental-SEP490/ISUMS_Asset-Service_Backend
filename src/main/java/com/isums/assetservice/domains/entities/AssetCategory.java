@@ -35,5 +35,6 @@ public class AssetCategory {
     @EqualsAndHashCode.Exclude
     @JsonIgnore
     @OneToMany(mappedBy = "category",cascade = CascadeType.ALL,orphanRemoval = true)
+    @Builder.Default
     private List<AssetItem> assetItems = new ArrayList<>();
 }

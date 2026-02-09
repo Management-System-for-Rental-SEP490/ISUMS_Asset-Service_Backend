@@ -1,11 +1,14 @@
 package com.isums.assetservice.domains.dtos.AssetItemDTO;
 
+import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
+import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -20,4 +23,6 @@ public class AssetItemDto {
     private String nfcId;
     private int conditionPercent;
     private AssetStatus status;
+    private List<AssetImageDto> images;
+    private List<AssetEventDto> events;
 }
