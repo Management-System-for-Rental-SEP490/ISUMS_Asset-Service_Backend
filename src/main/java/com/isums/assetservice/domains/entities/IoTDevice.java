@@ -40,11 +40,4 @@ public class IoTDevice {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_item_id", nullable = false)
     private AssetItem assetItem;
-
-    @Column(name = "house_id")
-    private UUID houseId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "detection_type", nullable = false)
-    private DetectionType type;
 }
