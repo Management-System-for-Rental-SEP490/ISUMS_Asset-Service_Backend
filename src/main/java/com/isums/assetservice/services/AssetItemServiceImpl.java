@@ -1,5 +1,6 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
@@ -9,6 +10,7 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
+import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
@@ -26,6 +28,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetMapper assetMapper;
     private final AssetItemRepository assetItemRepository;
+    private final IoTDeviceService iotDeviceService;
 
     @Override
     public AssetItem CreateAssetItem(CreateAssetItemRequest request) {
@@ -43,6 +46,16 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .conditionPercent((request.conditionPercent()))
                     .status(request.status())
                     .build();
+
+            if (request.isIoTDevice()) {
+                CreateIoTDeviceRequest iotRequest = new CreateIoTDeviceRequest(
+                        request.displayName() + "_" + request.serialNumber(),
+                        request.serialNumber(),
+                        assetItem
+                );
+
+                iotDeviceService.createIoTDevice(iotRequest);
+            }
 
             return assetItemQuery.createAssetItem(assetItem);
 

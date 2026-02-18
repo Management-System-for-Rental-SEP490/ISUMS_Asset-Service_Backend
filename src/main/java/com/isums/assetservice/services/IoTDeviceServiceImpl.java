@@ -1,5 +1,6 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.domains.dtos.IoTDeviceDto;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.IoTDevice;
@@ -82,5 +83,16 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 .item(item)
                 .build());
 
+    }
+
+    @Override
+    public void createIoTDevice(CreateIoTDeviceRequest request) {
+        IoTDevice device = IoTDevice.builder()
+                .thing(request.thing())
+                .serialNumber(request.serialNumber())
+                .assetItem(request.assetItem())
+                .build();
+
+        iotDeviceRepository.save(device);
     }
 }
