@@ -27,9 +27,9 @@ public class AssetItemController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AssetItem>> CreateAssetItem(@RequestBody CreateAssetItemRequest request) {
-        ApiResponse<AssetItem> response = assetItemService.CreateAssetItem(request);
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    public ApiResponse<AssetItem> CreateAssetItem(@RequestBody CreateAssetItemRequest request) {
+        AssetItem response = assetItemService.CreateAssetItem(request);
+        return ApiResponses.created(response, "Create asset item successfully");
     }
 
     @PutMapping("/{id}")

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AssetItemService {
-    ApiResponse<AssetItem> CreateAssetItem(CreateAssetItemRequest request);
+    AssetItem CreateAssetItem(CreateAssetItemRequest request);
     ApiResponse<List<AssetItemDto>> GetAllAssetItems();
     ApiResponse<AssetItemDto> UpdateAssetItem(UUID id,UpdateAssetItemRequest request);
     ApiResponse<Void> deleteAssetItem(UUID id);
