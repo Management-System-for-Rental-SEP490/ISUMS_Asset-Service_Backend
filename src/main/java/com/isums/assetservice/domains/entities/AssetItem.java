@@ -5,13 +5,14 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
-@Table(name = "assetItems")
+@Table(name = "asset_items",
+        indexes = {
+                @Index(name = "idx_asset_house", columnList = "house_id"),
+                @Index(name = "idx_asset_serial", columnList = "serial_number")
+        })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,20 +24,23 @@ public class AssetItem {
     @UuidGenerator
     private UUID id;
 
+    @Column(name = "house_id")
     private UUID houseId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private AssetCategory category;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "display_name", columnDefinition = "text")
     private String displayName;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "serial_number", columnDefinition = "text")
     private String serialNumber;
 
+    @Column(name = "nfc_id")
     private String nfcId;
 
+    @Column(name = "condition_percent")
     private int conditionPercent;
 
     @Enumerated(EnumType.STRING)
@@ -53,4 +57,10 @@ public class AssetItem {
     @OneToMany(mappedBy = "assetItem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<AssetEvent> events = new LinkedHashSet<>();
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "assetItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<IoTDevice> iotDevices = new LinkedHashSet<>();
 }

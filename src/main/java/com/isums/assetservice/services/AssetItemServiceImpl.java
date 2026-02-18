@@ -28,7 +28,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetItemRepository assetItemRepository;
 
     @Override
-    public ApiResponse<AssetItem> CreateAssetItem(CreateAssetItemRequest request) {
+    public AssetItem CreateAssetItem(CreateAssetItemRequest request) {
         try {
             AssetCategory assetCategory = assetCategoryRepository
                     .findById(request.categoryId())
@@ -41,14 +41,13 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .serialNumber((request.serialNumber()))
                     .nfcId((request.nfcId()))
                     .conditionPercent((request.conditionPercent()))
-                    .status(AssetStatus.AVAILABLE)
+                    .status(request.status())
                     .build();
 
-            AssetItem created = assetItemQuery.createAssetItem(assetItem);
+            return assetItemQuery.createAssetItem(assetItem);
 
-            return ApiResponses.created(created, "Item created successfully");
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR, "fail to create item" + ex.getMessage());
+            throw new RuntimeException("Error to create asset item: " + ex.getMessage());
         }
     }
 
