@@ -4,5 +4,6 @@ public enum AssetStatus {
     AVAILABLE,
     IN_USE,
     BROKEN,
-    DISPOSED
+    DISPOSED,
+    DELETED
 }

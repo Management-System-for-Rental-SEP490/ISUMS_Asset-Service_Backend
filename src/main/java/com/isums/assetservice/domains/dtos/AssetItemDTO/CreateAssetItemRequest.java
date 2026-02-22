@@ -1,5 +1,7 @@
 package com.isums.assetservice.domains.dtos.AssetItemDTO;
 
+import com.isums.assetservice.domains.enums.AssetStatus;
+
 import java.util.UUID;
 
 public record CreateAssetItemRequest (
@@ -8,6 +10,7 @@ public record CreateAssetItemRequest (
      String displayName,
      String serialNumber,
      String nfcId,
-     int conditionPercent
+     int conditionPercent,
+     AssetStatus status
 ){
 }

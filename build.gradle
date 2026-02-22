@@ -47,11 +47,14 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter'
     implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-    implementation 'org.springframework.grpc:spring-grpc-spring-boot-starter'
+    implementation "org.springframework.grpc:spring-grpc-client-spring-boot-starter"
+    implementation "org.springframework.grpc:spring-grpc-spring-boot-starter"
+    implementation 'com.google.protobuf:protobuf-java-util:4.33.5'
     implementation platform("com.google.protobuf:protobuf-bom:4.33.4")
     implementation "com.google.protobuf:protobuf-java"
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    implementation 'software.amazon.awssdk:dynamodb:2.41.30'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
