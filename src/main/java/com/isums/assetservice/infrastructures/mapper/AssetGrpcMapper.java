@@ -81,6 +81,7 @@ public final class AssetGrpcMapper {
             case BROKEN -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
             case DISPOSED -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DISPOSED;
             case DELETED -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DELETED;
+
         };
     }
 

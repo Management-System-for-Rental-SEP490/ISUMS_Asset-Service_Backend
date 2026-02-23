@@ -11,7 +11,9 @@ import com.isums.assetservice.domains.entities.AssetItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @Mapper(componentModel = "spring")
 public interface AssetMapper {
@@ -23,10 +25,11 @@ public interface AssetMapper {
     List<AssetCategoryDto> mapAssetCategories(List<AssetCategory> assetCategories);
 
     @Mapping(source = "assetItem.id", target = "assetId")
+    @Mapping(source = "createdAt", target = "createdAt")
     AssetImageDto mapAssetImage(AssetImage assetImage);
-    List<AssetImageDto> maAssetImages(List<AssetImage> assetImages);
+    List<AssetImageDto> maAssetImages(Collection<AssetImage> assetImages);
 
     @Mapping(source = "assetItem.id", target = "assetId")
     AssetEventDto mapAssetEvent(AssetEvent assetEvent);
-    List<AssetEventDto> maAssetEvents(List<AssetEvent> assetEvents);
+    List<AssetEventDto> maAssetEvents(Collection<AssetEvent> assetEvents);
 }

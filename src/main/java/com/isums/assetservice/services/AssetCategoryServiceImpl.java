@@ -1,5 +1,6 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.enums.DetectionType;
 import com.isums.assetservice.infrastructures.abstracts.AssetCategoryService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
@@ -9,7 +10,9 @@ import com.isums.assetservice.domains.dtos.AssetCategoryDTO.UpdateAssetCategoryR
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
+import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -19,79 +22,89 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AssetCategoryServiceImpl implements AssetCategoryService {
-    private final AssetCategoryRepository assetCategoryRepository;
+    private final AssetCategoryRepository categoryRepository;
     private final AssetMapper assetMapper;
 
     @Override
     public AssetCategoryDto createAssetCategory(CreateAssetCategoryRequest request) {
-        try{
+        try {
             AssetCategory assetCategory = AssetCategory.builder()
                     .name(request.name())
                     .compensationPercent(request.compensationPercent())
                     .description(request.description())
                     .build();
 
-            AssetCategory created = assetCategoryRepository.save(assetCategory);
-            return assetMapper.mapAssetCategory(created);
+            AssetCategory created = categoryRepository.save(assetCategory);
+            return assetMapper.mapAssetCategory(assetCategory);
         } catch (Exception ex) {
-            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
+            throw new RuntimeException("Error to create asset categories: " + ex.getMessage());
         }
     }
 
     @Override
     public List<AssetCategoryDto> getAllAssetCategories() {
-        try{
-            List<AssetCategory> assetCategories = assetCategoryRepository.findAll();
-            return assetMapper.mapAssetCategories(assetCategories);
+        try {
+            List<AssetCategory> mapAssetCategories = categoryRepository.findAll();
+            return assetMapper.mapAssetCategories(mapAssetCategories);
         } catch (Exception ex) {
-            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
-        }
+            throw new RuntimeException("Error to get all asset categories: " + ex.getMessage());        }
     }
 
     @Override
-    public AssetCategoryDto updateAssetCategory(UUID id,UpdateAssetCategoryRequest request) {
+    public AssetCategoryDto updateAssetCategory(UUID id, UpdateAssetCategoryRequest request) {
         try {
-            AssetCategory assetCategory = assetCategoryRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Id not found"));
-
-
-
+            AssetCategory assetCategory = categoryRepository.findById(id)
+                    .orElseThrow(()-> new RuntimeException("Id not found"));
             //Validation name
-            if(request.name() != null && request.name().isBlank()){
-                throw new RuntimeException("Name can't be null");
+            if (request.name() != null && request.name().isBlank()) {
+                throw new RuntimeException("Name isn't correct form");
             }
 
             //Validation CompensationPercent
-            if(request.compensationPercent() != null){
-                if(request.compensationPercent() < 0 || request.compensationPercent() > 100){
-                   throw new RuntimeException("CompensationPercent must be 0 - 100");
+            if (request.compensationPercent() != null) {
+                if (request.compensationPercent() < 0 || request.compensationPercent() > 100) {
+                    throw new RuntimeException("compensation must be in 0 - 100");
                 }
             }
 
-            if(request.name() != null){
+            if (request.name() != null) {
                 assetCategory.setName(request.name());
 
             }
-            if(request.compensationPercent() != null){
+            if (request.compensationPercent() != null) {
                 assetCategory.setCompensationPercent(request.compensationPercent());
 
             }
-            if(request.description() != null){
+            if (request.description() != null) {
                 assetCategory.setDescription(request.description());
 
             }
 
-            AssetCategory updated = assetCategoryRepository.save(assetCategory);
+            AssetCategory updated = categoryRepository.save(assetCategory);
+            return assetMapper.mapAssetCategory(assetCategory);
 
-            return  assetMapper.mapAssetCategory(updated);
 
         } catch (Exception ex) {
-            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
+            throw new RuntimeException("Error to update asset item: " + ex.getMessage());
         }
     }
 
     @Override
     public Boolean deleteAssetCategory(UUID id) {
         return null;
+    }
+
+    @Override
+    @Cacheable(value = "detectionType", key = "'category:' + #id", sync = true)
+    public DetectionType getDetectionTypeById(UUID id) {
+        AssetCategory assetCategory = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Asset category not found with id: " + id));
+
+        DetectionType type = assetCategory.getDetectionType();
+
+        if (type == null) {
+            return DetectionType.NONE;
+        }
+        return type;
     }
 }

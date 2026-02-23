@@ -54,6 +54,7 @@ dependencies {
     implementation "com.google.protobuf:protobuf-java"
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    implementation 'software.amazon.awssdk:dynamodb:2.41.30'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
