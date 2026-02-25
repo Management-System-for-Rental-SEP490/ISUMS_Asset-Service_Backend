@@ -6,5 +6,6 @@ public enum AssetEventType {
     DAMAGED,
     REPAIRED,
     REPLACED,
-    DISPOSED
+    DISPOSED,
+    TRANSFERRED
 }

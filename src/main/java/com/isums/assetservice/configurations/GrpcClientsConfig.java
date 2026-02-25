@@ -1,6 +1,6 @@
 package com.isums.assetservice.configurations;
 
-import com.isums.assetservice.grpc.HouseGrpcServiceGrpc;
+import com.isums.houseservice.grpc.HouseServiceGrpc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.grpc.client.GrpcChannelFactory;
@@ -9,7 +9,7 @@ import org.springframework.grpc.client.GrpcChannelFactory;
 public class GrpcClientsConfig {
 
     @Bean
-    HouseGrpcServiceGrpc.HouseGrpcServiceBlockingStub houseStub(GrpcChannelFactory channels) {
-        return HouseGrpcServiceGrpc.newBlockingStub(channels.createChannel("house-service"));
+    HouseServiceGrpc.HouseServiceBlockingStub houseStub(GrpcChannelFactory channels) {
+        return HouseServiceGrpc.newBlockingStub(channels.createChannel("house-service"));
     }
 }

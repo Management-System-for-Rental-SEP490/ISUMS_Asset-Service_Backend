@@ -1,9 +1,8 @@
     package com.isums.assetservice.infrastructures.grpcs;
 
-
-    import com.isums.assetservice.grpc.GetHouseRequest;
-    import com.isums.assetservice.grpc.HouseResponse;
-    import com.isums.assetservice.grpc.HouseGrpcServiceGrpc;
+    import com.isums.houseservice.grpc.GetHouseRequest;
+    import com.isums.houseservice.grpc.HouseResponse;
+    import com.isums.houseservice.grpc.HouseServiceGrpc;
     import lombok.RequiredArgsConstructor;
     import org.springframework.stereotype.Service;
 
@@ -11,10 +10,10 @@
     @RequiredArgsConstructor
     public class GrpcHouseClient {
 
-        private final HouseGrpcServiceGrpc.HouseGrpcServiceBlockingStub houseStub;
+        private final HouseServiceGrpc.HouseServiceBlockingStub houseStub;
 
         public HouseResponse getHouseById(String id){
-            GetHouseRequest request = GetHouseRequest.newBuilder().setId(id).build();
+            GetHouseRequest request = GetHouseRequest.newBuilder().setHouseId(id).build();
             return houseStub.getHouseById(request);
         }
     }

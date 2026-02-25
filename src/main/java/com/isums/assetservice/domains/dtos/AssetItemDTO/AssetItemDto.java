@@ -23,6 +23,6 @@ public class AssetItemDto {
     private String nfcId;
     private int conditionPercent;
     private AssetStatus status;
-    private List<AssetImageDto> images;
-    private List<AssetEventDto> events;
+//    private List<AssetImageDto> images;
+//    private List<AssetEventDto> events;
 }

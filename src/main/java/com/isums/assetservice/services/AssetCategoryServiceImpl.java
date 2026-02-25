@@ -35,7 +35,7 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
                     .build();
 
             AssetCategory created = categoryRepository.save(assetCategory);
-            return assetMapper.mapAssetCategory(assetCategory);
+            return assetMapper.mapAssetCategory(created);
         } catch (Exception ex) {
             throw new RuntimeException("Error to create asset categories: " + ex.getMessage());
         }

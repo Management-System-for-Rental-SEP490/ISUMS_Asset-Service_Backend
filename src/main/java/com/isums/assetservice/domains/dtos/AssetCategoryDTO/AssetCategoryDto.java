@@ -15,4 +15,5 @@ public class AssetCategoryDto {
     private String name;
     private int compensationPercent;
     private String description;
+    private String detectionType;
 }
