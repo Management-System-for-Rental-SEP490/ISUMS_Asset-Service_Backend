@@ -59,10 +59,10 @@ public class AssetItemController {
     }
 
     @PutMapping("/{id}/transfer")
-    public ApiResponse<AssetItemDto> updateHouseForAsset(@PathVariable UUID assetId,
+    public ApiResponse<AssetItemDto> updateHouseForAsset(@PathVariable UUID id,
                                                          @RequestBody UpdateHouseRequest request,
                                                          @AuthenticationPrincipal Jwt jwt){
         UUID userId = UUID.fromString(jwt.getSubject());
-        return ApiResponses.ok(assetItemService.updateHouseForAsset(assetId,request,userId),"Update new house for asset-item successfully");
+        return ApiResponses.ok(assetItemService.updateHouseForAsset(id,request,userId),"Update new house for asset-item successfully");
     }
 }

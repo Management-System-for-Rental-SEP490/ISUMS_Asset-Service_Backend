@@ -181,13 +181,20 @@ public class AssetItemServiceImpl implements AssetItemService {
         }
     }
 
-    private void validateHouseExists(UUID houseId){
-        try{
-            houseStub.getHouseById(GetHouseRequest.newBuilder()
-                    .setHouseId(houseId.toString())
-                    .build());
-        } catch (Exception ex){
-            throw new RuntimeException("HouseId does not exist");
+    private void validateHouseExists(UUID houseId) {
+        try {
+            houseStub.getHouseById(
+                    GetHouseRequest.newBuilder()
+                            .setHouseId(houseId.toString())
+                            .build()
+            );
+        } catch (io.grpc.StatusRuntimeException ex) {
+
+            if (ex.getStatus().getCode() == io.grpc.Status.Code.NOT_FOUND) {
+                throw new RuntimeException("HouseId does not exist");
+            }
+
+            throw new RuntimeException("House service unavailable: " + ex.getStatus());
         }
     }
 }
