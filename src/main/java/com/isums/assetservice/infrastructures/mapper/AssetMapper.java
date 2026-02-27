@@ -4,10 +4,8 @@ import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
-import com.isums.assetservice.domains.entities.AssetCategory;
-import com.isums.assetservice.domains.entities.AssetEvent;
-import com.isums.assetservice.domains.entities.AssetImage;
-import com.isums.assetservice.domains.entities.AssetItem;
+import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
+import com.isums.assetservice.domains.entities.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -32,4 +30,9 @@ public interface AssetMapper {
     @Mapping(source = "assetItem.id", target = "assetId")
     AssetEventDto mapAssetEvent(AssetEvent assetEvent);
     List<AssetEventDto> maAssetEvents(Collection<AssetEvent> assetEvents);
+
+    @Mapping(source = "assetItem.houseId", target = "houseId")
+    @Mapping(source = "assetItem.id", target = "assetId")
+    AssetTagDto tagDto(AssetTag assetTag);
+    List<AssetTagDto> tagDtos(List<AssetTagDto> assetTagDtos);
 }

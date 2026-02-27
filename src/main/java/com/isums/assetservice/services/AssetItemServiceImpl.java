@@ -18,8 +18,11 @@ import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.houseservice.grpc.GetHouseRequest;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
+import io.grpc.Metadata;
+import io.grpc.stub.MetadataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +52,6 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .category(assetCategory)
                     .displayName((request.displayName()))
                     .serialNumber((request.serialNumber()))
-                    .nfcId((request.nfcId()))
                     .conditionPercent((request.conditionPercent()))
                     .status(request.status())
                     .build();
@@ -91,9 +93,6 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             if (request.serialNumber() != null)
                 assetItem.setSerialNumber(request.serialNumber());
-
-            if (request.nfcId() != null)
-                assetItem.setNfcId(request.nfcId());
 
             if (request.conditionPercent() != null)
                 assetItem.setConditionPercent(request.conditionPercent());
@@ -159,8 +158,6 @@ public class AssetItemServiceImpl implements AssetItemService {
             if (oldHouseId.equals(request.newHouseId())) {
                 throw new RuntimeException("Asset already in this house");
             }
-            validateHouseExists(request.newHouseId());
-
             item.setHouseId(request.newHouseId());
 
             assetItemRepository.save(item);
@@ -168,7 +165,7 @@ public class AssetItemServiceImpl implements AssetItemService {
             AssetEvent event = AssetEvent.builder()
                     .assetItem(item)
                     .eventType(AssetEventType.TRANSFERRED)
-                    .description("Transfer form " + oldHouseId + "to" + request.newHouseId())
+                    .description("Transfer form " + oldHouseId + " to " + request.newHouseId())
                     .createdAt(Instant.now())
                     .createBy(userId)
                     .build();
@@ -181,20 +178,4 @@ public class AssetItemServiceImpl implements AssetItemService {
         }
     }
 
-    private void validateHouseExists(UUID houseId) {
-        try {
-            houseStub.getHouseById(
-                    GetHouseRequest.newBuilder()
-                            .setHouseId(houseId.toString())
-                            .build()
-            );
-        } catch (io.grpc.StatusRuntimeException ex) {
-
-            if (ex.getStatus().getCode() == io.grpc.Status.Code.NOT_FOUND) {
-                throw new RuntimeException("HouseId does not exist");
-            }
-
-            throw new RuntimeException("House service unavailable: " + ex.getStatus());
-        }
-    }
 }

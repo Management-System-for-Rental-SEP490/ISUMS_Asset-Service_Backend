@@ -53,11 +53,11 @@ dependencies {
     implementation 'com.google.protobuf:protobuf-java-util:4.33.5'
     implementation platform("com.google.protobuf:protobuf-bom:4.33.4")
     implementation "com.google.protobuf:protobuf-java"
+    implementation "com.isums:proto-common:1.0-SNAPSHOT"
+    implementation 'com.google.protobuf:protobuf-java:4.34.0-RC2'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'software.amazon.awssdk:dynamodb:2.41.30'
-    implementation "com.isums:proto-common:1.0-SNAPSHOT"
-    implementation 'com.google.protobuf:protobuf-java:4.34.0-RC2'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
