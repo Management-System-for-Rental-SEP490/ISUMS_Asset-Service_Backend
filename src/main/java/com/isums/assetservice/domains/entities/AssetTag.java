@@ -32,7 +32,7 @@ public class AssetTag {
     private String tagValue;
 
     @Column(nullable = false)
-    private boolean isActive = true;
+    private Boolean isActive = true;
 
     private Instant activatedAt;
 

@@ -1,5 +1,6 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
 import com.isums.assetservice.domains.dtos.AssetTagDto.AttachTagRequest;
 import com.isums.assetservice.domains.dtos.AssetTagDto.TransferTagRequest;
@@ -37,6 +38,11 @@ public class AssetTagServiceImpl implements AssetTagService {
                 throw new RuntimeException("Tag now is in-use");
             }
 
+            if (assetTagRepository.existsByAssetItemIdAndTagTypeAndIsActiveTrue(
+                    assetItem.getId(), request.tagType())) {
+                throw new RuntimeException("Asset already has active tag of this type");
+            }
+
             AssetTag assetTag = AssetTag.builder()
                     .tagValue(request.tagValue())
                     .tagType(request.tagType())
@@ -67,13 +73,14 @@ public class AssetTagServiceImpl implements AssetTagService {
         }
     }
 
+    @Transactional
     @Override
     public AssetTagDto detachTag(String tagValue) {
         try{
             AssetTag tag = assetTagRepository.findByTagValueAndIsActiveTrue(tagValue)
                     .orElseThrow(()-> new RuntimeException("Active tag not found"));
 
-            tag.setActive(false);
+            tag.setIsActive(false);
             tag.setDeactivatedAt(Instant.now());
 
             assetTagRepository.save(tag);
@@ -118,9 +125,14 @@ public class AssetTagServiceImpl implements AssetTagService {
             }
 
             //deactivated tag cũ
-            currentTag.setActive(false);
+            currentTag.setIsActive(false);
             currentTag.setDeactivatedAt(Instant.now());
             assetTagRepository.save(currentTag);
+
+            if (assetTagRepository.existsByAssetItemIdAndTagTypeAndIsActiveTrue(
+                    newAsset.getId(), currentTag.getTagType())) {
+                throw new RuntimeException("Asset already has active tag of this type");
+            }
 
             //attach tag mới
             AssetTag newTag = AssetTag.builder()
@@ -149,6 +161,25 @@ public class AssetTagServiceImpl implements AssetTagService {
             return assetMapper.tagDto(newTag);
         } catch (Exception ex) {
             throw new RuntimeException("Error to transfer tag to new asset" +ex.getMessage());
+        }
+    }
+
+    @Transactional
+    @Override
+    public AssetItemDto getAssetItemByTagValue(String tagValue) {
+        try{
+            if(tagValue == null || tagValue.isBlank()){
+                throw new IllegalArgumentException("Tag value must not be empty");
+            }
+
+            AssetTag tag = assetTagRepository.findByTagValueAndIsActiveTrue(tagValue)
+                    .orElseThrow(() -> new RuntimeException("Tag not found or not active"));
+
+            AssetItem item = tag.getAssetItem();
+
+            return assetMapper.mapAssetItem(item);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error to get asset item information" +ex.getMessage());
         }
     }
 }

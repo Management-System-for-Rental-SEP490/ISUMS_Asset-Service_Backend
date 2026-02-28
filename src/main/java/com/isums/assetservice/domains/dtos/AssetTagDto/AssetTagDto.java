@@ -12,6 +12,6 @@ public record AssetTagDto(
         UUID assetId,
         UUID houseId,
         Instant activatedAt,
-        boolean isActive
+        Boolean isActive
 ) {
 }

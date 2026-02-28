@@ -27,7 +27,6 @@ public final class AssetGrpcMapper {
                 .setHouseId(uuid(item.getHouseId()))
                 .setDisplayName(str(item.getDisplayName()))
                 .setSerialNumber(str(item.getSerialNumber()))
-                .setNfcId(str(item.getNfcId()))
                 .setConditionPercent(item.getConditionPercent())
                 .setStatus(mapStatus(item.getStatus()));
 
