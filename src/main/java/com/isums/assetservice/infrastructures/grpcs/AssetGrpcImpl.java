@@ -1,10 +1,10 @@
 package com.isums.assetservice.infrastructures.grpcs;
 
 import com.isums.assetservice.infrastructures.mapper.AssetGrpcMapper;
-import com.isums.assetservice.grpc.AssetGrpcServiceGrpc;
-import com.isums.assetservice.grpc.GetAssetItemsByHouseIdRequest;
-import com.isums.assetservice.grpc.GetAssetItemsResponse;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
+import com.isums.contractservice.grpc.AssetServiceGrpc;
+import com.isums.contractservice.grpc.GetAssetItemsByHouseIdRequest;
+import com.isums.contractservice.grpc.GetAssetItemsResponse;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class AssetGrpcImpl extends AssetGrpcServiceGrpc.AssetGrpcServiceImplBase {
+public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
     private final AssetItemRepository assetItemRepository;
     private final AssetGrpcMapper assetGrpcMapper;
 

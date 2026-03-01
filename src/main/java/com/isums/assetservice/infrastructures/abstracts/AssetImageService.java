@@ -9,7 +9,7 @@ import com.isums.assetservice.domains.entities.AssetImage;
 import java.util.List;
 
 public interface AssetImageService {
-    ApiResponse<AssetImageDto> createImage(CreateAssetImageRequest request);
-    ApiResponse<List<AssetImageDto>> getAllAssetImages();
+    AssetImageDto createImage(CreateAssetImageRequest request);
+    List<AssetImageDto> getAllAssetImages();
 
 }
