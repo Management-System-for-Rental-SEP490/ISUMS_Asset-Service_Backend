@@ -9,7 +9,6 @@ public record CreateAssetItemRequest (
      UUID categoryId,
      String displayName,
      String serialNumber,
-     String nfcId,
      int conditionPercent,
      AssetStatus status
 ){

@@ -2,7 +2,9 @@ package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.entities.AssetEvent;
+import com.isums.assetservice.domains.entities.AssetTag;
 import com.isums.assetservice.domains.enums.AssetEventType;
+import com.isums.assetservice.domains.enums.TagType;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
@@ -16,6 +18,7 @@ import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
+import com.isums.assetservice.infrastructures.repositories.AssetTagRepository;
 import com.isums.houseservice.grpc.GetHouseRequest;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
 import io.grpc.Metadata;
@@ -27,8 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Transactional
 @Service
@@ -38,6 +41,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetEventRepository assetEventRepository;
     private final AssetMapper assetMapper;
     private final AssetItemRepository assetItemRepository;
+    private final AssetTagRepository assetTagRepository;
     private final HouseServiceGrpc.HouseServiceBlockingStub houseStub;
 
     @Override
@@ -67,11 +71,30 @@ public class AssetItemServiceImpl implements AssetItemService {
     @Override
     public List<AssetItemDto> GetAllAssetItems() {
         try {
-            List<AssetItem> mapAssetItems = assetItemRepository.findAll();
-            return assetMapper.mapAssetItems(mapAssetItems);
+            List<AssetItem> items = assetItemRepository.findAll();
+
+            List<UUID> assetIds = items.stream()
+                    .map(AssetItem::getId)
+                    .toList();
+
+            List<AssetTag> tags = assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
+
+            Map<UUID, List<AssetTag>> tagMap =
+                    tags.stream()
+                            .collect(Collectors.groupingBy(
+                                    tag -> tag.getAssetItem().getId()
+                            ));
+
+            return items.stream()
+                    .map(asset -> assetMapper.mapAssetItem(
+                            asset,
+                            tagMap.get(asset.getId())
+                    ))
+                    .toList();
+
 
         } catch (Exception ex) {
-            throw new RuntimeException("Error to create asset item: " + ex.getMessage());
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
     }
 

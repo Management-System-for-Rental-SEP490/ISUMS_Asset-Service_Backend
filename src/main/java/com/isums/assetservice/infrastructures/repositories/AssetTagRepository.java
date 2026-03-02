@@ -10,9 +10,7 @@ import java.util.UUID;
 
 public interface AssetTagRepository extends JpaRepository<AssetTag,UUID> {
     Optional<AssetTag> findByTagValueAndIsActiveTrue(String tagValue);
-
-    List<AssetTag> findByAssetItemIdAndIsActiveTrue(UUID assetItemId);
-
+    List<AssetTag> findByAssetItemIdInAndIsActiveTrue(List<UUID> assetIds);
     Boolean existsByTagValueAndIsActiveTrue(String tagValue);
     Boolean existsByAssetItemIdAndTagTypeAndIsActiveTrue(UUID assetId, TagType tagType);
 
