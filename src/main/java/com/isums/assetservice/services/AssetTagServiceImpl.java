@@ -35,7 +35,7 @@ public class AssetTagServiceImpl implements AssetTagService {
                     .orElseThrow(()-> new RuntimeException("Asset not found"));
 
             if(assetTagRepository.existsByTagValueAndIsActiveTrue(request.tagValue())){
-                throw new RuntimeException("Tag now is in-use");
+                throw new RuntimeException("Tag/QR now is in-use");
             }
 
             if (assetTagRepository.existsByAssetItemIdAndTagTypeAndIsActiveTrue(
