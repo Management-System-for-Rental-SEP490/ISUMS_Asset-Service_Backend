@@ -7,7 +7,10 @@ import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
-import com.isums.contractservice.grpc.*;
+import com.isums.assetservice.grpc.AssetCategoryDto;
+import com.isums.assetservice.grpc.AssetEventDto;
+import com.isums.assetservice.grpc.AssetItemDto;
+import com.isums.assetservice.grpc.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -77,44 +80,44 @@ public final class AssetGrpcMapper {
                 .build();
     }
 
-    private com.isums.contractservice.grpc.AssetStatus mapStatus(AssetStatus s) {
+    private com.isums.assetservice.grpc.AssetStatus mapStatus(AssetStatus s) {
 
         if (s == null) {
-            return com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
+            return com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
         }
 
         return switch (s) {
             case AVAILABLE ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
+                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
 
             case IN_USE ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
+                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
 
             case BROKEN ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
+                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
 
             case DISPOSED ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_DISPOSED;
+                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DISPOSED;
 
             case DELETED ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_DELETED;
+                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DELETED;
         };
     }
 
-    private com.isums.contractservice.grpc.AssetEventType mapEventType(AssetEventType t) {
+    private com.isums.assetservice.grpc.AssetEventType mapEventType(AssetEventType t) {
 
         if (t == null) {
-            return com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_UNSPECIFIED;
+            return com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_UNSPECIFIED;
         }
 
         return switch (t) {
-            case CREATED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CREATED;
-            case CHECKED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CHECKED;
-            case DAMAGED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DAMAGED;
-            case REPAIRED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPAIRED;
-            case REPLACED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPLACED;
-            case DISPOSED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DISPOSED;
-            case TRANSFERRED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_TRANSFERRED;
+            case CREATED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CREATED;
+            case CHECKED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CHECKED;
+            case DAMAGED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DAMAGED;
+            case REPAIRED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPAIRED;
+            case REPLACED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPLACED;
+            case DISPOSED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DISPOSED;
+            case TRANSFERRED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_TRANSFERRED;
         };
     }
 

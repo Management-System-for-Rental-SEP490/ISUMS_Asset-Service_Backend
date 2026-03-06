@@ -201,4 +201,14 @@ public class AssetItemServiceImpl implements AssetItemService {
         }
     }
 
+    @Override
+    public void updateCondition(UUID assetId, Integer conditionScore) {
+        AssetItem asset = assetItemRepository.findById(assetId)
+                .orElseThrow(() -> new RuntimeException("Asset not found"));
+
+        asset.setConditionPercent(conditionScore);
+
+        assetItemRepository.save(asset);
+    }
+
 }
