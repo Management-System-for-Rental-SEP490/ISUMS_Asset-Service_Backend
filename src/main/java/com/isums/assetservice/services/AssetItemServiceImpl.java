@@ -47,17 +47,19 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .status(request.status())
                     .build();
 
+            AssetItem created = assetItemQuery.createAssetItem(assetItem);
+
             if (request.isIoTDevice()) {
                 CreateIoTDeviceRequest iotRequest = new CreateIoTDeviceRequest(
                         request.displayName() + "_" + request.serialNumber(),
                         request.serialNumber(),
-                        assetItem
+                        created
                 );
 
                 iotDeviceService.createIoTDevice(iotRequest);
             }
 
-            return assetItemQuery.createAssetItem(assetItem);
+            return created;
 
         } catch (Exception ex) {
             throw new RuntimeException("Error to create asset item: " + ex.getMessage());

@@ -27,7 +27,7 @@ public class AssetItemController {
     }
 
     @PostMapping
-    public ApiResponse<AssetItem> CreateAssetItem(@RequestBody CreateAssetItemRequest request) {
+    public ApiResponse<AssetItem> createAssetItem(@RequestBody CreateAssetItemRequest request) {
         AssetItem response = assetItemService.CreateAssetItem(request);
         return ApiResponses.created(response, "Create asset item successfully");
     }

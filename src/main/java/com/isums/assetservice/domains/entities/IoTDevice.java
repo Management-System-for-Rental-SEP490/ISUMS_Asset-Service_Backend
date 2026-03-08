@@ -16,9 +16,7 @@ import java.util.UUID;
         indexes = {
                 @Index(name = "idx_iot_thing", columnList = "thing"),
                 @Index(name = "idx_iot_serial", columnList = "serial_number"),
-                @Index(name = "idx_iot_asset_item", columnList = "asset_item_id"),
-                @Index(name = "idx_iot_house", columnList = "house_id"),
-                @Index(name = "idx_iot_type", columnList = "detection_type")
+                @Index(name = "idx_iot_asset_item", columnList = "asset_item_id")
         }
 )
 @NoArgsConstructor

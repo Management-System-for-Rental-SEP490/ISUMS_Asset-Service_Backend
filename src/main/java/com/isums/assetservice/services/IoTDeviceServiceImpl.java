@@ -4,6 +4,7 @@ import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.domains.dtos.IoTDeviceDto;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.IoTDevice;
+import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.mapper.IoTDeviceMapper;
 import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
@@ -42,6 +43,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 iot.getSerialNumber(),
                 iot.getAssetId(),
                 iot.getHouseId(),
+                iot.getAreaId(),
                 iot.getCategoryId(),
                 iot.getCategoryCode(),
                 iot.getDetectionType()
@@ -66,12 +68,16 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
         String houseId = asset.getHouseId().toString();
         String categoryCode = asset.getCategory().getCode();
         String detectionType = asset.getCategory().getDetectionType().name();
+        String areaId = asset.getFunctionAreaId().toString();
+        AssetStatus status = asset.getStatus();
 
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("thing", AttributeValue.builder().s(thing).build());
         item.put("assetId", AttributeValue.builder().s(assetId).build());
+        item.put("areaId", AttributeValue.builder().s(areaId).build());
         item.put("categoryCode", AttributeValue.builder().s(categoryCode).build());
-        item.put("status", AttributeValue.builder().s(detectionType).build());
+        item.put("detectionType", AttributeValue.builder().s(detectionType).build());
+        item.put("status", AttributeValue.builder().s(status.name()).build());
         item.put("updatedAt", AttributeValue.builder().n(String.valueOf(System.currentTimeMillis())).build());
 
         if (houseId != null) {
@@ -93,6 +99,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 .assetItem(request.assetItem())
                 .build();
 
-        iotDeviceRepository.save(device);
+        var savedDevice = iotDeviceRepository.save(device);
+        upsetToDynamoDB(savedDevice);
     }
 }
