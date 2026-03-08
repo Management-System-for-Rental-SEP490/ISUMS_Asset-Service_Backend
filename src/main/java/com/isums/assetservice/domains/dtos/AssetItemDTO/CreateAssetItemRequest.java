@@ -11,6 +11,7 @@ public record CreateAssetItemRequest (
      String serialNumber,
      String nfcId,
      int conditionPercent,
-     AssetStatus status
+     AssetStatus status,
+     Boolean isIoTDevice
 ){
 }

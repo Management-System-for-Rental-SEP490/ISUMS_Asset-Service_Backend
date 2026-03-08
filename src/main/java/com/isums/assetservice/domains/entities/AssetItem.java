@@ -27,6 +27,9 @@ public class AssetItem {
     @Column(name = "house_id")
     private UUID houseId;
 
+    @Column(name = "function_area_id")
+    private UUID functionAreaId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private AssetCategory category;

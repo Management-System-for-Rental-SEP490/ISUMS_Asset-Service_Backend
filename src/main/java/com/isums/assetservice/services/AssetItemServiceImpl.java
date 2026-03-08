@@ -1,5 +1,6 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.domains.enums.AssetEventType;
@@ -12,6 +13,7 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
+import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
@@ -35,6 +37,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetEventRepository assetEventRepository;
     private final AssetMapper assetMapper;
     private final AssetItemRepository assetItemRepository;
+    private final IoTDeviceService iotDeviceService;
     private final HouseServiceGrpc.HouseServiceBlockingStub houseStub;
 
     @Override

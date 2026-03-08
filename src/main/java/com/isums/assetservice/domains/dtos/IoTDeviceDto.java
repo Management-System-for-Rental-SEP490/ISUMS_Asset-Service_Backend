@@ -10,6 +10,7 @@ public record IoTDeviceDto(
         String serialNumber,
         UUID assetId,
         UUID houseId,
+        UUID areaId,
         UUID categoryId,
         String categoryCode,
         DetectionType detectionType
