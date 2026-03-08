@@ -15,5 +15,5 @@ public class AssetImageDto {
     private UUID assetId;
     private String imageUrl;
     private String note;
-    private Instant createAt;
+    private Instant createdAt;
 }

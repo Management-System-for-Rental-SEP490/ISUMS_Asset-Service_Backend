@@ -25,7 +25,7 @@ public interface AssetMapper {
     List<AssetCategoryDto> mapAssetCategories(List<AssetCategory> assetCategories);
 
     @Mapping(source = "assetItem.id", target = "assetId")
-    @Mapping(source = "createdAt", target = "createAt")
+    @Mapping(source = "createdAt", target = "createdAt")
     AssetImageDto mapAssetImage(AssetImage assetImage);
     List<AssetImageDto> maAssetImages(Collection<AssetImage> assetImages);
 
