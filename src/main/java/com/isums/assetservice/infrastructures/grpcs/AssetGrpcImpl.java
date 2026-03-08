@@ -1,13 +1,14 @@
 package com.isums.assetservice.infrastructures.grpcs;
 
+import com.isums.assetservice.grpc.AssetServiceGrpc;
 import com.isums.assetservice.infrastructures.mapper.AssetGrpcMapper;
+import com.isums.assetservice.grpc.GetAssetItemsByHouseIdRequest;
+import com.isums.assetservice.grpc.GetAssetItemsResponse;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
-import com.isums.contractservice.grpc.AssetServiceGrpc;
-import com.isums.contractservice.grpc.GetAssetItemsByHouseIdRequest;
-import com.isums.contractservice.grpc.GetAssetItemsResponse;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
     private final AssetItemRepository assetItemRepository;
     private final AssetGrpcMapper assetGrpcMapper;
@@ -54,10 +56,12 @@ public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
             responseObserver.onCompleted();
 
         } catch (DataAccessException dae) {
+            log.error("DB error in getAssetItemsByHouseId", dae); // ← thêm log
             responseObserver.onError(
                     Status.UNAVAILABLE.withDescription("Database unavailable").withCause(dae).asRuntimeException()
             );
         } catch (Exception ex) {
+            log.error("Unexpected error in getAssetItemsByHouseId", ex); // ← thêm log
             responseObserver.onError(
                     Status.INTERNAL.withDescription("Internal server error").withCause(ex).asRuntimeException()
             );

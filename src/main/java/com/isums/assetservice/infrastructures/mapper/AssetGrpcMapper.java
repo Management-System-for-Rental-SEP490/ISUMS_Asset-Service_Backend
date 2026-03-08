@@ -85,20 +85,12 @@ public final class AssetGrpcMapper {
         }
 
         return switch (s) {
-            case AVAILABLE ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
-
-            case IN_USE ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
-
-            case BROKEN ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
-
-            case DISPOSED ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_DISPOSED;
-
-            case DELETED ->
-                    com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_DELETED;
+            case AVAILABLE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
+            case IN_USE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
+            case ACTIVE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
+            case BROKEN -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
+            case DISPOSED -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DISPOSED;
+            case DELETED -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DELETED;
         };
     }
 
@@ -109,13 +101,13 @@ public final class AssetGrpcMapper {
         }
 
         return switch (t) {
-            case CREATED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CREATED;
-            case CHECKED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CHECKED;
-            case DAMAGED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DAMAGED;
-            case REPAIRED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPAIRED;
-            case REPLACED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPLACED;
-            case DISPOSED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DISPOSED;
-            case TRANSFERRED -> com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_TRANSFERRED;
+            case CREATED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CREATED;
+            case CHECKED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_CHECKED;
+            case DAMAGED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DAMAGED;
+            case REPAIRED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPAIRED;
+            case REPLACED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPLACED;
+            case DISPOSED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DISPOSED;
+            case TRANSFERRED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_TRANSFERRED;
         };
     }
 
