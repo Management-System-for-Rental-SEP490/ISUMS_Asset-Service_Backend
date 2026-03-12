@@ -87,20 +87,13 @@ public final class AssetGrpcMapper {
         }
 
         return switch (s) {
-            case AVAILABLE ->
-                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
 
-            case IN_USE ->
-                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
-
-            case BROKEN ->
-                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
-
-            case DISPOSED ->
-                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DISPOSED;
-
-            case DELETED ->
-                    com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DELETED;
+            case AVAILABLE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
+            case IN_USE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
+            case ACTIVE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
+            case BROKEN -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
+            case DISPOSED -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DISPOSED;
+            case DELETED -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_DELETED;
         };
     }
 
