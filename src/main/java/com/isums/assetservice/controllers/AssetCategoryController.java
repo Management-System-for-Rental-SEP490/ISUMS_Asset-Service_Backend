@@ -7,16 +7,13 @@ import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.CreateAssetCategoryRequest;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.UpdateAssetCategoryRequest;
-import com.isums.assetservice.domains.entities.AssetCategory;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
-@RestController
-@RequestMapping("api/assets/categories")
+@RequestMapping("/api/assets/categories")
 @RequiredArgsConstructor
 public class AssetCategoryController {
     private final AssetCategoryService assetCategoryService;

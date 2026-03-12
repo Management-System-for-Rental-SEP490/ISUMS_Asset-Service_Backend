@@ -4,6 +4,7 @@ import com.isums.assetservice.domains.dtos.ApiError;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -58,4 +59,21 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(res.getStatusCode()).body(res);
     }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<?>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        String message = "Data integrity violation";
+        if (ex.getMessage() != null && ex.getMessage().contains("serial_number")) {
+            message = "Serial number already exists";
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponses.fail(HttpStatus.CONFLICT, message));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<?>> handleConflictException(ConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponses.fail(HttpStatus.CONFLICT, ex.getMessage()));
+    }
+
 }

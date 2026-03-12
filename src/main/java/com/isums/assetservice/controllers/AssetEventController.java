@@ -13,8 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-@RestController
-@RequestMapping("api/assets/events")
+@RequestMapping("/api/assets/events")
 @RequiredArgsConstructor
 public class AssetEventController {
     private final AssetEventService assetEventService;

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record CreateAssetItemRequest (
      UUID houseId,
+     UUID functionalId,
      UUID categoryId,
      String displayName,
      String serialNumber,

@@ -6,11 +6,10 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.iot.IotClient;
 
 @Configuration
-public class DynamoConfig {
-
+public class AwsIotConfig {
     @Value("${spring.cloud.aws.credentials.access-key}")
     private String accessKey;
 
@@ -18,8 +17,8 @@ public class DynamoConfig {
     private String secretKey;
 
     @Bean
-    public DynamoDbClient dynamoDbClient() {
-        return DynamoDbClient.builder()
+    public IotClient iotClient() {
+        return IotClient.builder()
                 .region(Region.AP_SOUTHEAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)

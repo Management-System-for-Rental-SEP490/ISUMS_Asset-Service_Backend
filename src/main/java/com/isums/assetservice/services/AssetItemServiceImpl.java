@@ -5,10 +5,7 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.domains.entities.AssetTag;
 import com.isums.assetservice.domains.enums.AssetEventType;
-import com.isums.assetservice.domains.enums.TagType;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
-import com.isums.assetservice.domains.dtos.ApiResponse;
-import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
@@ -21,13 +18,8 @@ import com.isums.assetservice.infrastructures.repositories.AssetCategoryReposito
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetTagRepository;
-import com.isums.houseservice.grpc.GetHouseRequest;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
-import io.grpc.Metadata;
-import io.grpc.stub.MetadataUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +48,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             AssetItem assetItem = AssetItem.builder()
                     .houseId(request.houseId())
+                    .functionAreaId(request.functionalId())
                     .category(assetCategory)
                     .displayName((request.displayName()))
                     .serialNumber((request.serialNumber()))
@@ -64,6 +57,18 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .build();
 
             AssetItem created = assetItemRepository.save(assetItem);
+
+
+            if (request.isIoTDevice()) {
+                CreateIoTDeviceRequest iotRequest = new CreateIoTDeviceRequest(
+                        "ctrl-" + request.houseId(),
+                        request.serialNumber(),
+                        created
+                );
+
+                iotDeviceService.createIoTDevice(iotRequest);
+            }
+
             return assetMapper.mapAssetItem(created);
 
         } catch (Exception ex) {
@@ -143,6 +148,8 @@ public class AssetItemServiceImpl implements AssetItemService {
 
 
             assetItem.setStatus(AssetStatus.DISPOSED);
+
+            assetItemRepository.save(assetItem);
             return true;
         } catch (Exception ex) {
             throw new RuntimeException("Error to create asset item: " + ex.getMessage());
