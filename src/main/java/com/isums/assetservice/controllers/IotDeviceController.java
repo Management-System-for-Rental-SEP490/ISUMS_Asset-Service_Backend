@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/iot-devices")
+@RequestMapping("/api/assets/iot-devices")
 @RequiredArgsConstructor
-public class IoTDeviceController {
+public class IotDeviceController {
     private final IoTDeviceService iotDeviceService;
 
     @GetMapping("/{thing}")

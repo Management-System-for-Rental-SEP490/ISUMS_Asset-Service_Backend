@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/asset-events")
+@RequestMapping("/api/assets/events")
 @RequiredArgsConstructor
 public class AssetEventController {
     private final AssetEventService assetEventService;

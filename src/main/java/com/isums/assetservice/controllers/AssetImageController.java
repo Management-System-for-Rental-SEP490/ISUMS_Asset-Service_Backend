@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/asset-images")
+@RequestMapping("/api/assets/images")
 @RequiredArgsConstructor
 public class AssetImageController {
     private final AssetImageService assetImageService;

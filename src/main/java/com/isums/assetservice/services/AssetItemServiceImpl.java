@@ -39,6 +39,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             AssetItem assetItem = AssetItem.builder()
                     .houseId(request.houseId())
+                    .functionAreaId(request.functionalId())
                     .category(assetCategory)
                     .displayName((request.displayName()))
                     .serialNumber((request.serialNumber()))
@@ -51,7 +52,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             if (request.isIoTDevice()) {
                 CreateIoTDeviceRequest iotRequest = new CreateIoTDeviceRequest(
-                        request.displayName() + "_" + request.serialNumber(),
+                        "ctrl-" + request.houseId(),
                         request.serialNumber(),
                         created
                 );
@@ -124,8 +125,7 @@ public class AssetItemServiceImpl implements AssetItemService {
             }
 
             assetItem.setStatus(AssetStatus.DISPOSED);
-            assetItemQuery.createAssetItem(assetItem);
-
+            assetItemRepository.save(assetItem);
             return ApiResponses.ok(null, "Asset deleted (soft)");
         } catch (Exception ex) {
             return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR, "fail to get all items: " + ex.getMessage());
