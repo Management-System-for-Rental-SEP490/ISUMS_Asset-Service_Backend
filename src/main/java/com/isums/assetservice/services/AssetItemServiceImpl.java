@@ -164,7 +164,23 @@ public class AssetItemServiceImpl implements AssetItemService {
     public List<AssetItemDto> getAssetItemsByHouseId(UUID houseId) {
         try {
             List<AssetItem> assetItems = assetItemRepository.findByHouseId(houseId);
-            return assetMapper.mapAssetItems(assetItems);
+            List<UUID> assetIds = assetItems.stream()
+                    .map(AssetItem::getId)
+                    .toList();
+
+            List<AssetTag> tags = assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
+
+            Map<UUID, List<AssetTag>> tagMap =
+                    tags.stream()
+                            .collect(Collectors.groupingBy(
+                                    tag -> tag.getAssetItem().getId()
+                            ));
+            return assetItems.stream()
+                    .map(asset -> assetMapper.mapAssetItem(
+                            asset,
+                            tagMap.get(asset.getId())
+                    ))
+                    .toList();
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset items: " + ex.getMessage());
         }

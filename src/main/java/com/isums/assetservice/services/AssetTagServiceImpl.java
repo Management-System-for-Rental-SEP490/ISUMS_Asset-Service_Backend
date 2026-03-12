@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -176,8 +177,9 @@ public class AssetTagServiceImpl implements AssetTagService {
                     .orElseThrow(() -> new RuntimeException("Tag not found or not active"));
 
             AssetItem item = tag.getAssetItem();
+            List<AssetTag> tags = assetTagRepository.findByAssetItemIdAndIsActiveTrue(item.getId());
 
-            return assetMapper.mapAssetItem(item);
+            return assetMapper.mapAssetItem(item,tags);
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset item information" +ex.getMessage());
         }

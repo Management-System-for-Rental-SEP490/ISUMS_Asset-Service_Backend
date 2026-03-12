@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/asset/tag-logs")
+@RequestMapping("api/assets/tag-logs")
 @RequiredArgsConstructor
 public class AssetTagLogController {
     private final AssetTagLogService assetTagLogService;

@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/asset/tags")
+@RequestMapping("api/assets/tags")
 @RequiredArgsConstructor
 public class AssetTagController {
     private final AssetTagService assetTagService;

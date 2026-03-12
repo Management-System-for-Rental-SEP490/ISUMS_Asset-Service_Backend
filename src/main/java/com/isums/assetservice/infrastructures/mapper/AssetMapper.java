@@ -41,7 +41,6 @@ public interface AssetMapper {
 
     @Mapping(source = "assetItem.category.id", target = "categoryId")
     AssetItemDto mapAssetItem(AssetItem assetItem, List<AssetTag> tags);
-
     @AfterMapping
     default void setTags(
             AssetItem assetItem,
