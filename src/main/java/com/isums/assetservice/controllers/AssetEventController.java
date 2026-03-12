@@ -1,30 +1,38 @@
 package com.isums.assetservice.controllers;
 
+import com.isums.assetservice.domains.dtos.ApiResponses;
+import com.isums.assetservice.domains.dtos.AssetEventDTO.UpdateAssetEventRequest;
 import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.CreateAssetEventRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
-@RestController
 @RequestMapping("/api/assets/events")
 @RequiredArgsConstructor
 public class AssetEventController {
     private final AssetEventService assetEventService;
 
-    public ResponseEntity<ApiResponse<AssetEventDto>> createAssetEvent(@RequestBody CreateAssetEventRequest request){
-        ApiResponse<AssetEventDto> response = assetEventService.createEvent(request);
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    @PostMapping
+    public ApiResponse<AssetEventDto> createAssetEvent(@RequestBody CreateAssetEventRequest request){
+        AssetEventDto response = assetEventService.createEvent(request);
+        return ApiResponses.created(response,"Create Event successfully");
     }
 
-    public ResponseEntity<ApiResponse<List<AssetEventDto>>> GetAllEvents(){
-        ApiResponse<List<AssetEventDto>> response = assetEventService.getAllAssetEvents();
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    @GetMapping
+    public ApiResponse<List<AssetEventDto>> GetAllEvents(){
+        List<AssetEventDto> response = assetEventService.getAllAssetEvents();
+        return ApiResponses.ok(response,"Get events successfully");
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<AssetEventDto> UpdateAssetEvent(@PathVariable UUID id, @RequestBody UpdateAssetEventRequest request){
+        AssetEventDto response = assetEventService.updateEventStatus(id,request);
+        return ApiResponses.ok(response,"Update status successfully");
     }
 }

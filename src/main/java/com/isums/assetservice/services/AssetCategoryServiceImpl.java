@@ -22,12 +22,11 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AssetCategoryServiceImpl implements AssetCategoryService {
-    private final AssetCategoryQuery assetCategoryQuery;
     private final AssetCategoryRepository categoryRepository;
     private final AssetMapper assetMapper;
 
     @Override
-    public ApiResponse<AssetCategory> createAssetCategory(CreateAssetCategoryRequest request) {
+    public AssetCategoryDto createAssetCategory(CreateAssetCategoryRequest request) {
         try {
             AssetCategory assetCategory = AssetCategory.builder()
                     .name(request.name())
@@ -35,41 +34,36 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
                     .description(request.description())
                     .build();
 
-            AssetCategory created = assetCategoryQuery.createAssetCategory(assetCategory);
-            return ApiResponses.created(created, "Create asset category successfully");
+            AssetCategory created = categoryRepository.save(assetCategory);
+            return assetMapper.mapAssetCategory(created);
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR, "fail to create item" + ex.getMessage());
+            throw new RuntimeException("Error to create asset categories: " + ex.getMessage());
         }
     }
 
     @Override
-    public ApiResponse<List<AssetCategoryDto>> getAllAssetCategories() {
+    public List<AssetCategoryDto> getAllAssetCategories() {
         try {
-            List<AssetCategoryDto> mapAssetCategories = assetCategoryQuery.getAllAsset();
-            return ApiResponses.ok(mapAssetCategories, "Get all asset categories successfully");
+            List<AssetCategory> mapAssetCategories = categoryRepository.findAll();
+            return assetMapper.mapAssetCategories(mapAssetCategories);
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR, "fail to get all categories" + ex.getMessage());
-        }
+            throw new RuntimeException("Error to get all asset categories: " + ex.getMessage());        }
     }
 
     @Override
-    public ApiResponse<AssetCategoryDto> updateAssetCategory(UUID id, UpdateAssetCategoryRequest request) {
+    public AssetCategoryDto updateAssetCategory(UUID id, UpdateAssetCategoryRequest request) {
         try {
-            AssetCategory assetCategory = assetCategoryQuery.findById(id);
-            if (assetCategory == null) {
-                return ApiResponses.fail(HttpStatus.NOT_FOUND, "Id not found");
-            }
-
-
+            AssetCategory assetCategory = categoryRepository.findById(id)
+                    .orElseThrow(()-> new RuntimeException("Id not found"));
             //Validation name
             if (request.name() != null && request.name().isBlank()) {
-                return ApiResponses.fail(HttpStatus.BAD_REQUEST, "Name can't be empty");
+                throw new RuntimeException("Name isn't correct form");
             }
 
             //Validation CompensationPercent
             if (request.compensationPercent() != null) {
                 if (request.compensationPercent() < 0 || request.compensationPercent() > 100) {
-                    return ApiResponses.fail(HttpStatus.BAD_REQUEST, "CompensationPercent must be 0 - 100");
+                    throw new RuntimeException("compensation must be in 0 - 100");
                 }
             }
 
@@ -86,19 +80,17 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
 
             }
 
-            AssetCategory updated = assetCategoryQuery.createAssetCategory(assetCategory);
-            AssetCategoryDto assetCategoryDto = assetMapper.mapAssetCategory(updated);
-
-            return ApiResponses.ok(assetCategoryDto, "Update asset category successfully");
+            AssetCategory updated = categoryRepository.save(assetCategory);
+            return assetMapper.mapAssetCategory(assetCategory);
 
 
         } catch (Exception ex) {
-            return ApiResponses.fail(HttpStatus.INTERNAL_SERVER_ERROR, "fail to get categories" + ex.getMessage());
+            throw new RuntimeException("Error to update asset item: " + ex.getMessage());
         }
     }
 
     @Override
-    public ApiResponse<Void> deleteAssetCategory(UUID id) {
+    public Boolean deleteAssetCategory(UUID id) {
         return null;
     }
 

@@ -1,15 +1,16 @@
     package com.isums.assetservice.infrastructures.grpcs;
 
-
     import com.isums.houseservice.grpc.GetHouseRequest;
     import com.isums.houseservice.grpc.HouseResponse;
     import com.isums.houseservice.grpc.HouseServiceGrpc;
+    import lombok.RequiredArgsConstructor;
     import org.springframework.stereotype.Service;
 
     @Service
+    @RequiredArgsConstructor
     public class GrpcHouseClient {
 
-        private HouseServiceGrpc.HouseServiceBlockingStub houseStub;
+        private final HouseServiceGrpc.HouseServiceBlockingStub houseStub;
 
         public HouseResponse getHouseById(String id){
             GetHouseRequest request = GetHouseRequest.newBuilder().setHouseId(id).build();

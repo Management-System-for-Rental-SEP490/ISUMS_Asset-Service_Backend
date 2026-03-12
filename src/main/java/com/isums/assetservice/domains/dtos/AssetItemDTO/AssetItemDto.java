@@ -20,9 +20,10 @@ public class AssetItemDto {
     private UUID categoryId;
     private String displayName;
     private String serialNumber;
-    private String nfcId;
     private int conditionPercent;
     private AssetStatus status;
-    private List<AssetImageDto> images;
-    private List<AssetEventDto> events;
+    private String nfcTag;
+    private String qrTag;
+//    private List<AssetImageDto> images;
+//    private List<AssetEventDto> events;
 }

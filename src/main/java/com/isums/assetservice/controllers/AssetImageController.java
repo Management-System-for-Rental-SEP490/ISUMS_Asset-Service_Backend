@@ -1,5 +1,6 @@
 package com.isums.assetservice.controllers;
 
+import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.infrastructures.abstracts.AssetImageService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
@@ -10,21 +11,20 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController
 @RequestMapping("/api/assets/images")
 @RequiredArgsConstructor
 public class AssetImageController {
     private final AssetImageService assetImageService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AssetImageDto>>> getAllAssetImages(){
-        ApiResponse<List<AssetImageDto>> response = assetImageService.getAllAssetImages();
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    public ApiResponse<List<AssetImageDto>> getAllAssetImages(){
+        List<AssetImageDto> response = assetImageService.getAllAssetImages();
+        return ApiResponses.ok(response,"Get all asset-images successfully");
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AssetImageDto>> createAssetImage(@RequestBody CreateAssetImageRequest request){
-        ApiResponse<AssetImageDto> response = assetImageService.createImage(request);
-        return ResponseEntity.status(response.getStatusCode()).body(response);
+    public ApiResponse<AssetImageDto> createAssetImage(@RequestBody CreateAssetImageRequest request){
+       AssetImageDto response = assetImageService.createImage(request);
+        return ApiResponses.created(response,"Create asset-images successfully");
     }
 }
