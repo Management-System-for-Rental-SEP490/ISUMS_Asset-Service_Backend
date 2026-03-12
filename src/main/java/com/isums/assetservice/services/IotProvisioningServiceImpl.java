@@ -12,10 +12,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeAction;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValueUpdate;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.CertificateStatus;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,12 +30,16 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     private final IotClient iotClient;
     private final IotControllerRepository controllerRepository;
+    private final DynamoDbClient dynamoDbClient;
 
     @Value("${app.iot.policy-name}")
     private String policyName;
 
     @Value("${app.iot.mqtt-endpoint}")
     private String mqttEndpoint;
+
+    @Value("${app.ddb.assetMapTable}")
+    private String assetMapTable;
 
     @Override
     public IotProvisionResponse provisionController(UUID houseId, String deviceId) {
@@ -63,6 +72,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .build();
             controllerRepository.save(controller);
 
+            syncControllerToDynamoDB(thingName, houseId);
+
             return new IotProvisionResponse(
                     thingName,
                     certResult.certificatePem(),
@@ -80,13 +91,50 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         }
     }
 
+    private void syncControllerToDynamoDB(String thingName, UUID houseId) {
+        try {
+            dynamoDbClient.putItem(r -> r
+                    .tableName(assetMapTable)
+                    .item(Map.of(
+                            "thing",         AttributeValue.builder().s(thingName).build(),
+                            "houseId",       AttributeValue.builder().s(houseId.toString()).build(),
+                            "status",        AttributeValue.builder().s("PENDING").build(),
+                            "detectionType", AttributeValue.builder().s("EIF    ").build(),
+                            "updatedAt",     AttributeValue.builder()
+                                    .n(String.valueOf(System.currentTimeMillis())).build()
+                    ))
+            );
+            log.info("Synced controller {} to DynamoDB", thingName);
+        } catch (Exception e) {
+            log.error("DynamoDB sync failed for {}: {}", thingName, e.getMessage());
+        }
+    }
+
     @Override
     public void activateController(String thingName) {
         controllerRepository.findByThingName(thingName).ifPresent(ctrl -> {
+            if(ctrl.getStatus() != IotControllerStatus.PENDING) return;
+
             ctrl.setStatus(IotControllerStatus.ACTIVE);
             ctrl.setActivatedAt(Instant.now());
             controllerRepository.save(ctrl);
-            log.info("Activated controller {}", thingName);
+
+            dynamoDbClient.updateItem(r -> r
+                    .tableName(assetMapTable)
+                    .key(Map.of("thing", AttributeValue.builder().s(thingName).build()))
+                    .attributeUpdates(Map.of(
+                            "status", AttributeValueUpdate.builder()
+                                    .value(AttributeValue.builder().s("ACTIVE").build())
+                                    .action(AttributeAction.PUT)
+                                    .build(),
+                            "activatedAt", AttributeValueUpdate.builder()
+                                    .value(AttributeValue.builder().n(
+                                            String.valueOf(System.currentTimeMillis())).build())
+                                    .action(AttributeAction.PUT)
+                                    .build()
+                    ))
+            );
+            log.info("Activated controller {} → DynamoDB synced", thingName);
         });
     }
 

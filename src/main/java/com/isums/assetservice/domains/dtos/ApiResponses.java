@@ -40,4 +40,11 @@ public final class ApiResponses {
         return fail(status, message, null);
     }
 
+    public static <T> ApiResponse<T> noContent() {
+        return ApiResponse.<T>builder()
+                .statusCode(HttpStatus.NO_CONTENT.value())
+                .success(true)
+                .build();
+    }
+
 }

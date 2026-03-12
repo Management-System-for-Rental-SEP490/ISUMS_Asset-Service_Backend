@@ -77,7 +77,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
         item.put("areaId", AttributeValue.builder().s(areaId).build());
         item.put("categoryCode", AttributeValue.builder().s(categoryCode).build());
         item.put("detectionType", AttributeValue.builder().s(detectionType).build());
-        item.put("status", AttributeValue.builder().s(status.name()).build());
+        item.put("status", AttributeValue.builder().s("PENDING").build());
         item.put("updatedAt", AttributeValue.builder().n(String.valueOf(System.currentTimeMillis())).build());
 
         if (houseId != null) {
