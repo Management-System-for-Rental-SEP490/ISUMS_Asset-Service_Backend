@@ -3,7 +3,9 @@ package com.isums.assetservice.services;
 import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.entities.AssetEvent;
+import com.isums.assetservice.domains.entities.AssetTag;
 import com.isums.assetservice.domains.enums.AssetEventType;
+import com.isums.assetservice.domains.enums.TagType;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
@@ -18,16 +20,20 @@ import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
+import com.isums.assetservice.infrastructures.repositories.AssetTagRepository;
 import com.isums.houseservice.grpc.GetHouseRequest;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
+import io.grpc.Metadata;
+import io.grpc.stub.MetadataUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Transactional
 @Service
@@ -37,6 +43,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetEventRepository assetEventRepository;
     private final AssetMapper assetMapper;
     private final AssetItemRepository assetItemRepository;
+    private final AssetTagRepository assetTagRepository;
     private final IoTDeviceService iotDeviceService;
     private final HouseServiceGrpc.HouseServiceBlockingStub houseStub;
 
@@ -52,7 +59,6 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .category(assetCategory)
                     .displayName((request.displayName()))
                     .serialNumber((request.serialNumber()))
-                    .nfcId((request.nfcId()))
                     .conditionPercent((request.conditionPercent()))
                     .status(request.status())
                     .build();
@@ -68,11 +74,30 @@ public class AssetItemServiceImpl implements AssetItemService {
     @Override
     public List<AssetItemDto> GetAllAssetItems() {
         try {
-            List<AssetItem> mapAssetItems = assetItemRepository.findAll();
-            return assetMapper.mapAssetItems(mapAssetItems);
+            List<AssetItem> items = assetItemRepository.findAll();
+
+            List<UUID> assetIds = items.stream()
+                    .map(AssetItem::getId)
+                    .toList();
+
+            List<AssetTag> tags = assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
+
+            Map<UUID, List<AssetTag>> tagMap =
+                    tags.stream()
+                            .collect(Collectors.groupingBy(
+                                    tag -> tag.getAssetItem().getId()
+                            ));
+
+            return items.stream()
+                    .map(asset -> assetMapper.mapAssetItem(
+                            asset,
+                            tagMap.get(asset.getId())
+                    ))
+                    .toList();
+
 
         } catch (Exception ex) {
-            throw new RuntimeException("Error to create asset item: " + ex.getMessage());
+            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
     }
 
@@ -94,9 +119,6 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             if (request.serialNumber() != null)
                 assetItem.setSerialNumber(request.serialNumber());
-
-            if (request.nfcId() != null)
-                assetItem.setNfcId(request.nfcId());
 
             if (request.conditionPercent() != null)
                 assetItem.setConditionPercent(request.conditionPercent());
@@ -145,7 +167,23 @@ public class AssetItemServiceImpl implements AssetItemService {
     public List<AssetItemDto> getAssetItemsByHouseId(UUID houseId) {
         try {
             List<AssetItem> assetItems = assetItemRepository.findByHouseId(houseId);
-            return assetMapper.mapAssetItems(assetItems);
+            List<UUID> assetIds = assetItems.stream()
+                    .map(AssetItem::getId)
+                    .toList();
+
+            List<AssetTag> tags = assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
+
+            Map<UUID, List<AssetTag>> tagMap =
+                    tags.stream()
+                            .collect(Collectors.groupingBy(
+                                    tag -> tag.getAssetItem().getId()
+                            ));
+            return assetItems.stream()
+                    .map(asset -> assetMapper.mapAssetItem(
+                            asset,
+                            tagMap.get(asset.getId())
+                    ))
+                    .toList();
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset items: " + ex.getMessage());
         }
@@ -162,8 +200,6 @@ public class AssetItemServiceImpl implements AssetItemService {
             if (oldHouseId.equals(request.newHouseId())) {
                 throw new RuntimeException("Asset already in this house");
             }
-            validateHouseExists(request.newHouseId());
-
             item.setHouseId(request.newHouseId());
 
             assetItemRepository.save(item);
@@ -171,7 +207,7 @@ public class AssetItemServiceImpl implements AssetItemService {
             AssetEvent event = AssetEvent.builder()
                     .assetItem(item)
                     .eventType(AssetEventType.TRANSFERRED)
-                    .description("Transfer form " + oldHouseId + "to" + request.newHouseId())
+                    .description("Transfer form " + oldHouseId + " to " + request.newHouseId())
                     .createdAt(Instant.now())
                     .createBy(userId)
                     .build();
@@ -184,20 +220,14 @@ public class AssetItemServiceImpl implements AssetItemService {
         }
     }
 
-    private void validateHouseExists(UUID houseId) {
-        try {
-            houseStub.getHouseById(
-                    GetHouseRequest.newBuilder()
-                            .setHouseId(houseId.toString())
-                            .build()
-            );
-        } catch (io.grpc.StatusRuntimeException ex) {
+    @Override
+    public void updateCondition(UUID assetId, Integer conditionScore) {
+        AssetItem asset = assetItemRepository.findById(assetId)
+                .orElseThrow(() -> new RuntimeException("Asset not found"));
 
-            if (ex.getStatus().getCode() == io.grpc.Status.Code.NOT_FOUND) {
-                throw new RuntimeException("HouseId does not exist");
-            }
+        asset.setConditionPercent(conditionScore);
 
-            throw new RuntimeException("House service unavailable: " + ex.getStatus());
-        }
+        assetItemRepository.save(asset);
     }
+
 }

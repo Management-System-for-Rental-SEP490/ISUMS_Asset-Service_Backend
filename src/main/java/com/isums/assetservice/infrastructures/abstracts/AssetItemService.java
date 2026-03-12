@@ -16,4 +16,5 @@ public interface AssetItemService {
     AssetItemDto getAssetItemById(UUID id);
     List<AssetItemDto> getAssetItemsByHouseId(UUID houseId);
     AssetItemDto updateHouseForAsset(UUID assetId, UpdateHouseRequest request, UUID userId);
+    void updateCondition(UUID assetId, Integer conditionScore);
 }

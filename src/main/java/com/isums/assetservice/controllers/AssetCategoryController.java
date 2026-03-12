@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/asset/categories")
+@RequestMapping("api/assets/categories")
 @RequiredArgsConstructor
 public class AssetCategoryController {
     private final AssetCategoryService assetCategoryService;
