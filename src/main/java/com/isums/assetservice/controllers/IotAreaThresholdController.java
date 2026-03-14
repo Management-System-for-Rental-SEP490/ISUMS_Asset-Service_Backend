@@ -34,7 +34,7 @@ public class IotAreaThresholdController {
     }
 
     @DeleteMapping("/{metric}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
     public ApiResponse<Void> delete(@PathVariable UUID houseId, @PathVariable UUID areaId, @PathVariable String metric) {
         thresholdService.deleteAreaLevel(areaId, metric);
         return ApiResponses.noContent();

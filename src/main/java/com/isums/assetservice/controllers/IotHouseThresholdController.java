@@ -16,7 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/assets/houses/{houseId}/iot/thresholds")
 @RequiredArgsConstructor
-public class IotThresholdController {
+public class IotHouseThresholdController {
 
     private final IotThresholdService thresholdService;
 

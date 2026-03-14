@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -38,4 +40,9 @@ public class IoTDevice {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_item_id", nullable = false)
     private AssetItem assetItem;
+
+    @ElementCollection
+    @CollectionTable(name = "iot_device_capabilities")
+    @Column(name = "capability")
+    private Set<String> capabilities = new HashSet<>();
 }

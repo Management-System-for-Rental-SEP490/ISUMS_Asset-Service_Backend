@@ -20,13 +20,16 @@ public class IotController {
     private UUID id;
 
     @Column(name = "device_id", unique = true, nullable = false)
-    private String deviceId; // MAC từ QR
+    private String deviceId;
 
     @Column(name = "house_id", nullable = false)
     private UUID houseId;
 
+    @Column(name = "area_id")
+    private UUID areaId;
+
     @Column(name = "thing_name", unique = true)
-    private String thingName; // ctrl-aabbccddeeff
+    private String thingName;
 
     @Column(name = "certificate_arn")
     private String certificateArn;
