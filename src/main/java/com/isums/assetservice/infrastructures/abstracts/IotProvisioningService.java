@@ -14,4 +14,6 @@ public interface IotProvisioningService {
     void deprovisionController(UUID houseId);
 
     ControllerInfoResponse getControllerByHouse(UUID houseId);
+
+    void assignNodeToArea(String thing, UUID areaId);
 }

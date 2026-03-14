@@ -2,10 +2,15 @@ package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.IotProvisionResponse;
 import com.isums.assetservice.domains.dtos.ControllerInfoResponse;
+import com.isums.assetservice.domains.entities.AssetItem;
+import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.domains.enums.IotControllerStatus;
 import com.isums.assetservice.exceptions.ConflictException;
+import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
+import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
+import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
 import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
 import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +36,9 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     private final IotClient iotClient;
     private final IotControllerRepository controllerRepository;
     private final DynamoDbClient dynamoDbClient;
+    private final IoTDeviceRepository ioTDeviceRepository;
+    private final AssetItemRepository assetItemRepository;
+    private final IoTDeviceServiceImpl ioTDeviceService;
 
     @Value("${app.iot.policy-name}")
     private String policyName;
@@ -164,6 +172,20 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                 .filter(ctrl -> ctrl.getHouseId().equals(houseId))
                 .findFirst().map(ctrl -> new ControllerInfoResponse(ctrl.getThingName(), ctrl.getDeviceId()))
                 .orElseThrow(() -> new NotFoundException("Controller not found for house " + houseId));
+    }
+
+    @Override
+    public void assignNodeToArea(String thing, UUID areaId) {
+        IoTDevice device = ioTDeviceRepository.findByThing(thing)
+                .orElseThrow(() -> new NotFoundException("IoT device not found: " + thing));
+
+        AssetItem asset = device.getAssetItem();
+        asset.setFunctionAreaId(areaId);
+        assetItemRepository.save(asset);
+
+        ioTDeviceService.upsetToDynamoDB(device);
+
+        log.info("Assigned node {} to area {}", thing, areaId);
     }
 
     private String extractCertId(String arn) {

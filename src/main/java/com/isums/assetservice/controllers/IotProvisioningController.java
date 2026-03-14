@@ -1,10 +1,7 @@
 package com.isums.assetservice.controllers;
 
 import com.isums.assetservice.domains.IotProvisionResponse;
-import com.isums.assetservice.domains.dtos.ApiResponse;
-import com.isums.assetservice.domains.dtos.ApiResponses;
-import com.isums.assetservice.domains.dtos.ControllerInfoResponse;
-import com.isums.assetservice.domains.dtos.IotProvisionRequest;
+import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,5 +34,12 @@ public class IotProvisioningController {
     public ApiResponse<ControllerInfoResponse> getController(@PathVariable UUID houseId) {
         var res = iotProvisioningService.getControllerByHouse(houseId);
         return ApiResponses.ok(res, "IoT controller retrieved successfully");
+    }
+
+    @PutMapping("/iot/nodes/{thing}/assign-area")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
+    public ApiResponse<Void> assignArea(@PathVariable UUID houseId, @PathVariable String thing, @RequestBody AssignAreaRequest req) {
+        iotProvisioningService.assignNodeToArea(thing, req.areaId());
+        return ApiResponses.noContent();
     }
 }
