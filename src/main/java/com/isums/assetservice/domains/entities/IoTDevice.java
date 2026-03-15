@@ -1,6 +1,5 @@
 package com.isums.assetservice.domains.entities;
 
-import com.isums.assetservice.domains.enums.DetectionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,8 +40,12 @@ public class IoTDevice {
     @JoinColumn(name = "asset_item_id", nullable = false)
     private AssetItem assetItem;
 
-    @ElementCollection
-    @CollectionTable(name = "iot_device_capabilities")
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "iot_device_capabilities",
+            joinColumns = @JoinColumn(name = "device_id")
+    )
     @Column(name = "capability")
+    @Builder.Default
     private Set<String> capabilities = new HashSet<>();
 }

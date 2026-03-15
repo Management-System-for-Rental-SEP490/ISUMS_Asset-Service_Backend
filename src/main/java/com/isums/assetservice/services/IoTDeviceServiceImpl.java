@@ -16,9 +16,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +24,6 @@ import java.util.UUID;
 public class IoTDeviceServiceImpl implements IoTDeviceService {
 
     private final IoTDeviceRepository iotDeviceRepository;
-    private final IoTDeviceMapper iotDeviceMapper;
     private final DynamoDbClient dynamoDbClient;
 
     @Value("${app.ddb.assetMapTable}")
@@ -79,6 +76,13 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
 
         if (areaId != null) {
             item.put("areaId", av(areaId.toString()));
+        }
+
+        Set<String> capabilities = device.getCapabilities();
+        if (capabilities != null && !capabilities.isEmpty()) {
+            item.put("capabilities", AttributeValue.builder()
+                    .ss(new ArrayList<>(capabilities))
+                    .build());
         }
 
         dynamoDbClient.putItem(PutItemRequest.builder()

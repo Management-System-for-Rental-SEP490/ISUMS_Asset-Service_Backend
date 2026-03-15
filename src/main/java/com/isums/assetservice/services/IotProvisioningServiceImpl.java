@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.iot.model.CertificateStatus;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -113,10 +114,10 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             dynamoDbClient.putItem(r -> r
                     .tableName(assetMapTable)
                     .item(Map.of(
-                            "thing",     AttributeValue.builder().s(thingName).build(),
-                            "houseId",   AttributeValue.builder().s(houseId.toString()).build(),
-                            "role",      AttributeValue.builder().s("CONTROLLER").build(),
-                            "status",    AttributeValue.builder().s("PENDING").build(),
+                            "thing", AttributeValue.builder().s(thingName).build(),
+                            "houseId", AttributeValue.builder().s(houseId.toString()).build(),
+                            "role", AttributeValue.builder().s("CONTROLLER").build(),
+                            "status", AttributeValue.builder().s("PENDING").build(),
                             "updatedAt", AttributeValue.builder()
                                     .n(String.valueOf(System.currentTimeMillis())).build()
                     ))
@@ -130,7 +131,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     @Override
     public void activateController(String thingName) {
         controllerRepository.findByThingName(thingName).ifPresent(ctrl -> {
-            if(ctrl.getStatus() != IotControllerStatus.PENDING) return;
+            if (ctrl.getStatus() != IotControllerStatus.PENDING) return;
 
             ctrl.setStatus(IotControllerStatus.ACTIVE);
             ctrl.setActivatedAt(Instant.now());
@@ -158,19 +159,19 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     @Override
     public void deprovisionController(UUID houseId) {
         controllerRepository.findByHouseId(houseId).ifPresent(ctrl -> {
-                    try {
-                        iotClient.detachThingPrincipal(r -> r.thingName(ctrl.getThingName()).principal(ctrl.getCertificateArn()));
-                        iotClient.updateCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).newStatus(CertificateStatus.INACTIVE));
-                        iotClient.deleteCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).forceDelete(true));
-                        iotClient.deleteThing(r -> r.thingName(ctrl.getThingName()));
+            try {
+                iotClient.detachThingPrincipal(r -> r.thingName(ctrl.getThingName()).principal(ctrl.getCertificateArn()));
+                iotClient.updateCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).newStatus(CertificateStatus.INACTIVE));
+                iotClient.deleteCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).forceDelete(true));
+                iotClient.deleteThing(r -> r.thingName(ctrl.getThingName()));
 
-                        ctrl.setStatus(IotControllerStatus.DEPROVISIONED);
-                        controllerRepository.save(ctrl);
-                        log.info("Deprovisioned controller {}", ctrl.getThingName());
-                    } catch (Exception e) {
-                        log.error("Deprovision failed: {}", ctrl.getThingName(), e);
-                    }
-                });
+                ctrl.setStatus(IotControllerStatus.DEPROVISIONED);
+                controllerRepository.save(ctrl);
+                log.info("Deprovisioned controller {}", ctrl.getThingName());
+            } catch (Exception e) {
+                log.error("Deprovision failed: {}", ctrl.getThingName(), e);
+            }
+        });
     }
 
     @Override
@@ -255,6 +256,20 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, "Node provision failed: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void updateNodeCapabilities(String thing, Set<String> capabilities) {
+        IoTDevice device = ioTDeviceRepository.findByThing(thing)
+                .orElseThrow(() -> new NotFoundException("IoT device not found: " + thing));
+
+        device.setCapabilities(capabilities);
+        ioTDeviceRepository.save(device);
+
+        ioTDeviceService.upsetToDynamoDB(device);
+
+        log.info("Updated capabilities thing={} caps={}", thing, capabilities);
     }
 
     private String extractCertId(String arn) {

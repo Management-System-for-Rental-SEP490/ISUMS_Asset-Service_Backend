@@ -4,8 +4,6 @@ import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.domains.dtos.IoTDeviceDto;
 import com.isums.assetservice.domains.entities.IoTDevice;
 
-import java.util.UUID;
-
 public interface IoTDeviceService {
 
     public IoTDeviceDto getByThing(String thing);

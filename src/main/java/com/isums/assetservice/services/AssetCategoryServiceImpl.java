@@ -1,19 +1,14 @@
 package com.isums.assetservice.services;
 
-import com.isums.assetservice.domains.enums.DetectionType;
 import com.isums.assetservice.infrastructures.abstracts.AssetCategoryService;
-import com.isums.assetservice.domains.dtos.ApiResponse;
-import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.CreateAssetCategoryRequest;
 import com.isums.assetservice.domains.dtos.AssetCategoryDTO.UpdateAssetCategoryRequest;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -94,17 +89,4 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
         return null;
     }
 
-    @Override
-    @Cacheable(value = "detectionType", key = "'category:' + #id", sync = true)
-    public DetectionType getDetectionTypeById(UUID id) {
-        AssetCategory assetCategory = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Asset category not found with id: " + id));
-
-        DetectionType type = assetCategory.getDetectionType();
-
-        if (type == null) {
-            return DetectionType.NONE;
-        }
-        return type;
-    }
 }
