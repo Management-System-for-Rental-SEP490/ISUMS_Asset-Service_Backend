@@ -2,7 +2,9 @@ package com.isums.assetservice.infrastructures.abstracts;
 
 import com.isums.assetservice.domains.IotProvisionResponse;
 import com.isums.assetservice.domains.dtos.ControllerInfoResponse;
+import com.isums.assetservice.domains.dtos.NodeProvisionResponse;
 
+import java.util.Set;
 import java.util.UUID;
 
 public interface IotProvisioningService {
@@ -14,4 +16,10 @@ public interface IotProvisioningService {
     void deprovisionController(UUID houseId);
 
     ControllerInfoResponse getControllerByHouse(UUID houseId);
+
+    void assignNodeToArea(String thing, UUID areaId);
+
+    NodeProvisionResponse provisionNode(UUID houseId, String serial, String token);
+
+    void updateNodeCapabilities(String thing, Set<String> capabilities);
 }

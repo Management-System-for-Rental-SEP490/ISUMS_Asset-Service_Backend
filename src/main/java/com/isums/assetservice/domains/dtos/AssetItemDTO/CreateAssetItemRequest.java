@@ -11,7 +11,6 @@ public record CreateAssetItemRequest (
      String displayName,
      String serialNumber,
      int conditionPercent,
-     AssetStatus status,
-     Boolean isIoTDevice
+     AssetStatus status
 ){
 }

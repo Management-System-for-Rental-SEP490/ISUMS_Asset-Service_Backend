@@ -1,6 +1,5 @@
 package com.isums.assetservice.services;
 
-import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.domains.entities.AssetTag;
@@ -36,8 +35,6 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetMapper assetMapper;
     private final AssetItemRepository assetItemRepository;
     private final AssetTagRepository assetTagRepository;
-    private final IoTDeviceService iotDeviceService;
-    private final HouseServiceGrpc.HouseServiceBlockingStub houseStub;
 
     @Override
     public AssetItemDto CreateAssetItem(CreateAssetItemRequest request) {
@@ -57,17 +54,6 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .build();
 
             AssetItem created = assetItemRepository.save(assetItem);
-
-
-            if (request.isIoTDevice()) {
-                CreateIoTDeviceRequest iotRequest = new CreateIoTDeviceRequest(
-                        "ctrl-" + request.houseId(),
-                        request.serialNumber(),
-                        created
-                );
-
-                iotDeviceService.createIoTDevice(iotRequest);
-            }
 
             return assetMapper.mapAssetItem(created);
 

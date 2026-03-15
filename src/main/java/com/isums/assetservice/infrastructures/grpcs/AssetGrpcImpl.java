@@ -1,10 +1,9 @@
 package com.isums.assetservice.infrastructures.grpcs;
 
-import com.isums.assetservice.grpc.AssetServiceGrpc;
-import com.isums.assetservice.grpc.GetAssetItemsByHouseIdRequest;
-import com.isums.assetservice.grpc.GetAssetItemsResponse;
+import com.isums.assetservice.grpc.*;
 import com.isums.assetservice.infrastructures.mapper.AssetGrpcMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
+import com.isums.assetservice.services.IotThresholdService;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +20,7 @@ import java.util.UUID;
 public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
     private final AssetItemRepository assetItemRepository;
     private final AssetGrpcMapper assetGrpcMapper;
+    private final IotThresholdService iotThresholdService;
 
     @Override
     @Transactional(readOnly = true)

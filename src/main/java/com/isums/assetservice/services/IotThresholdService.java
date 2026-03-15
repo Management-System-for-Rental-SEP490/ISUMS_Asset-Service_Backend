@@ -7,6 +7,7 @@ import com.isums.assetservice.domains.enums.Severity;
 import com.isums.assetservice.infrastructures.mapper.IotThresholdMapper;
 import com.isums.assetservice.infrastructures.repositories.IotThresholdRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class IotThresholdService {
 
     private final IotThresholdRepository thresholdRepository;
@@ -32,16 +34,22 @@ public class IotThresholdService {
 
     public void seedDefaults(UUID houseId) {
         List<IotThreshold> defaults = List.of(
-                build(houseId, null, "voltage", 180.0, 260.0, "WARNING"),
-                build(houseId, null, "current", null, 20.0, "WARNING"),
-                build(houseId, null, "power", null, 5000.0, "WARNING"),
-                build(houseId, null, "frequency", 49.0, 51.0, "WARNING"),
-                build(houseId, null, "w_lpm", null, 50.0, "CRITICAL"),
-                build(houseId, null, "d_w_tot", null, 100.0, "WARNING"),
-                build(houseId, null, "gas_ppm", null, 300.0, "CRITICAL")
+                build(houseId, null, "voltage",   180.0, 260.0, "WARNING"),
+                build(houseId, null, "current",   null,  20.0,  "WARNING"),
+                build(houseId, null, "power",     null,  5000.0,"WARNING"),
+                build(houseId, null, "frequency", 49.0,  51.0,  "WARNING"),
+                build(houseId, null, "w_lpm",     null,  50.0,  "CRITICAL"),
+                build(houseId, null, "d_w_tot",   null,  100.0, "WARNING"),
+                build(houseId, null, "gas_ppm",   null,  300.0, "CRITICAL")
         );
-        thresholdRepository.saveAll(defaults);
-        defaults.forEach(this::syncToDynamoDB);
+
+        defaults.stream()
+                .filter(t -> thresholdRepository
+                        .findByHouseIdAndAreaIdIsNullAndMetric(t.getHouseId(), t.getMetric()).isEmpty())
+                .forEach(t -> {
+                    thresholdRepository.save(t);
+                    syncToDynamoDB(t);
+                });
     }
 
     private IotThreshold build(UUID houseId, UUID areaId, String metric,
@@ -78,9 +86,14 @@ public class IotThresholdService {
         t.setMaxVal(req.getMaxVal());
         t.setEnabled(req.getEnabled());
         t.setSeverity(Severity.valueOf(req.getSeverity()));
-        thresholdRepository.save(t);
-        syncToDynamoDB(t);
-        return iotThresholdMapper.toResponse(t);
+        IotThreshold saved = thresholdRepository.save(t);
+        try {
+            syncToDynamoDB(saved);
+        } catch (Exception e) {
+            log.warn("[THRESHOLD] DynamoDB sync failed for {}/{}: {}",
+                    saved.getHouseId(), saved.getMetric(), e.getMessage());
+        }
+        return iotThresholdMapper.toResponse(saved);
     }
 
     private void syncToDynamoDB(IotThreshold t) {

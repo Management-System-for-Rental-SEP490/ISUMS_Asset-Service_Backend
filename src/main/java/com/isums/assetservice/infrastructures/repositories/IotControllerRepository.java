@@ -10,6 +10,6 @@ import java.util.UUID;
 public interface IotControllerRepository extends JpaRepository<IotController, UUID> {
     Optional<IotController> findByDeviceId(String deviceId);
     Optional<IotController> findByThingName(String thingName);
-    boolean existsByHouseId(UUID houseId);
-    Optional<IotController> findByHouseIdAndStatus(UUID houseId, IotControllerStatus status);
+    Optional<IotController> findByHouseIdAndStatusNot(UUID houseId, IotControllerStatus status);
+    Optional<IotController> findByHouseId(UUID houseId);
 }
