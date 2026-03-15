@@ -104,11 +104,11 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             dynamoDbClient.putItem(r -> r
                     .tableName(assetMapTable)
                     .item(Map.of(
-                            "thing",         AttributeValue.builder().s(thingName).build(),
-                            "houseId",       AttributeValue.builder().s(houseId.toString()).build(),
-                            "status",        AttributeValue.builder().s("PENDING").build(),
-                            "detectionType", AttributeValue.builder().s("EIF    ").build(),
-                            "updatedAt",     AttributeValue.builder()
+                            "thing",     AttributeValue.builder().s(thingName).build(),
+                            "houseId",   AttributeValue.builder().s(houseId.toString()).build(),
+                            "role",      AttributeValue.builder().s("CONTROLLER").build(),
+                            "status",    AttributeValue.builder().s("PENDING").build(),
+                            "updatedAt", AttributeValue.builder()
                                     .n(String.valueOf(System.currentTimeMillis())).build()
                     ))
             );

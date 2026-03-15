@@ -18,6 +18,7 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -64,24 +65,21 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
             return;
         }
 
-        String assetId = asset.getId().toString();
-        String houseId = asset.getHouseId().toString();
+        String houseId      = asset.getHouseId().toString();
         String categoryCode = asset.getCategory().getCode();
-        String detectionType = asset.getCategory().getDetectionType().name();
-        String areaId = asset.getFunctionAreaId().toString();
-        AssetStatus status = asset.getStatus();
+        UUID areaId     = asset.getFunctionAreaId();
 
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("thing", AttributeValue.builder().s(thing).build());
-        item.put("assetId", AttributeValue.builder().s(assetId).build());
-        item.put("areaId", AttributeValue.builder().s(areaId).build());
-        item.put("categoryCode", AttributeValue.builder().s(categoryCode).build());
-        item.put("detectionType", AttributeValue.builder().s(detectionType).build());
-        item.put("status", AttributeValue.builder().s("PENDING").build());
-        item.put("updatedAt", AttributeValue.builder().n(String.valueOf(System.currentTimeMillis())).build());
+        item.put("thing",        av(thing));
+        item.put("houseId",      av(houseId));
+        item.put("role",         av("NODE"));
+        item.put("assetId",      av(asset.getId().toString()));
+        item.put("categoryCode", av(categoryCode));
+        item.put("status",       av("ACTIVE"));
+        item.put("updatedAt",    avn(String.valueOf(System.currentTimeMillis())));
 
-        if (houseId != null) {
-            item.put("houseId", AttributeValue.builder().s(houseId).build());
+        if (areaId != null) {
+            item.put("areaId", av(areaId.toString()));
         }
 
         dynamoDbClient.putItem(PutItemRequest.builder()
@@ -89,7 +87,11 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 .item(item)
                 .build());
 
+        log.info("Synced node {} to DynamoDB houseId={} areaId={}", thing, houseId, areaId);
     }
+
+    private AttributeValue av(String v)  { return AttributeValue.builder().s(v).build(); }
+    private AttributeValue avn(String v) { return AttributeValue.builder().n(v).build(); }
 
     @Override
     public void createIoTDevice(CreateIoTDeviceRequest request) {
