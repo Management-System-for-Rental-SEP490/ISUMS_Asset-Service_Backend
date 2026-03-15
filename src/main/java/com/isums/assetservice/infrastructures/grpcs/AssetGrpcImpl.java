@@ -20,7 +20,6 @@ import java.util.UUID;
 public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
     private final AssetItemRepository assetItemRepository;
     private final AssetGrpcMapper assetGrpcMapper;
-    private final IotThresholdService iotThresholdService;
 
     @Override
     @Transactional(readOnly = true)
@@ -56,12 +55,12 @@ public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
             responseObserver.onCompleted();
 
         } catch (DataAccessException dae) {
-            log.error("DB error in getAssetItemsByHouseId", dae); // ← thêm log
+            log.error("DB error in getAssetItemsByHouseId", dae);
             responseObserver.onError(
                     Status.UNAVAILABLE.withDescription("Database unavailable").withCause(dae).asRuntimeException()
             );
         } catch (Exception ex) {
-            log.error("Unexpected error in getAssetItemsByHouseId", ex); // ← thêm log
+            log.error("Unexpected error in getAssetItemsByHouseId", ex);
             responseObserver.onError(
                     Status.INTERNAL.withDescription("Internal server error").withCause(ex).asRuntimeException()
             );

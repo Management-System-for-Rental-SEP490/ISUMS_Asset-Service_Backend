@@ -48,7 +48,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
     }
 
     @Override
-    public void upsetToDynamoDB(IoTDevice device) {
+    public void upsetToDynamoDB(IoTDevice device, String areaName) {
         String thing = device.getThing();
         if (thing == null || thing.isBlank()) {
             log.error("Thing is empty");
@@ -78,6 +78,13 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
             item.put("areaId", av(areaId.toString()));
         }
 
+        if (areaId != null) {
+            item.put("areaId", av(areaId.toString()));
+        }
+        if (areaName != null) {
+            item.put("areaName", av(areaName));
+        }
+
         Set<String> capabilities = device.getCapabilities();
         if (capabilities != null && !capabilities.isEmpty()) {
             item.put("capabilities", AttributeValue.builder()
@@ -105,6 +112,6 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 .build();
 
         var savedDevice = iotDeviceRepository.save(device);
-        upsetToDynamoDB(savedDevice);
+        upsetToDynamoDB(savedDevice, request.areaName());
     }
 }

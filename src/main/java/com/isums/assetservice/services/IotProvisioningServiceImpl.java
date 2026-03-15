@@ -1,6 +1,6 @@
 package com.isums.assetservice.services;
 
-import com.isums.assetservice.domains.IotProvisionResponse;
+import com.isums.assetservice.domains.dtos.IotProvisionResponse;
 import com.isums.assetservice.domains.dtos.ControllerInfoResponse;
 import com.isums.assetservice.domains.dtos.NodeProvisionResponse;
 import com.isums.assetservice.domains.entities.AssetCategory;
@@ -12,10 +12,12 @@ import com.isums.assetservice.domains.enums.IotControllerStatus;
 import com.isums.assetservice.exceptions.ConflictException;
 import com.isums.assetservice.infrastructures.abstracts.IotNodeTokenService;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
+import com.isums.assetservice.infrastructures.grpcs.HouseGrpcImpl;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
 import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
+import com.isums.houseservice.grpc.FunctionalAreaResponse;
 import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.CertificateStatus;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -49,6 +52,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     private final IoTDeviceServiceImpl ioTDeviceService;
     private final IotNodeTokenService iotNodeTokenService;
     private final AssetCategoryRepository assetCategoryRepository;
+    private final HouseGrpcImpl houseGrpc;
 
     @Value("${app.iot.policy-name}")
     private String policyName;
@@ -60,13 +64,15 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     private String assetMapTable;
 
     @Override
-    public IotProvisionResponse provisionController(UUID houseId, String deviceId) {
+    public IotProvisionResponse provisionController(UUID houseId, UUID areaId, String deviceId) {
         var deviceExisted = controllerRepository.findByDeviceId(deviceId);
         if (deviceExisted.isPresent()) {
             var ctrl = deviceExisted.get();
             log.info("Device {} already provisioned for house {}", deviceId, ctrl.getHouseId());
-            throw new ConflictException(
-                    "Device " + deviceId + " already provisioned for house " + ctrl.getHouseId());
+            if (ctrl.getStatus() != IotControllerStatus.DEPROVISIONED) {
+                throw new ConflictException(
+                        "Device " + deviceId + " already provisioned for house " + ctrl.getHouseId());
+            }
         }
 
         String thingName = "ctrl-" + deviceId.replace(":", "").toLowerCase();
@@ -84,13 +90,14 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             IotController controller = IotController.builder()
                     .deviceId(deviceId)
                     .houseId(houseId)
+                    .areaId(areaId)
                     .thingName(thingName)
                     .certificateArn(certResult.certificateArn())
                     .status(IotControllerStatus.PENDING)
                     .build();
             controllerRepository.save(controller);
 
-            syncControllerToDynamoDB(thingName, houseId);
+            syncControllerToDynamoDB(thingName, houseId, areaId);
 
             return new IotProvisionResponse(
                     thingName,
@@ -109,20 +116,23 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         }
     }
 
-    private void syncControllerToDynamoDB(String thingName, UUID houseId) {
+    private void syncControllerToDynamoDB(String thingName, UUID houseId, UUID areaId) {
+        String areaName = getAreaName(houseId, areaId);
+
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("thing",     AttributeValue.builder().s(thingName).build());
+        item.put("houseId",   AttributeValue.builder().s(houseId.toString()).build());
+        item.put("role",      AttributeValue.builder().s("CONTROLLER").build());
+        item.put("status",    AttributeValue.builder().s("PENDING").build());
+        item.put("updatedAt", AttributeValue.builder()
+                .n(String.valueOf(System.currentTimeMillis())).build());
+
+        if (areaId != null)   item.put("areaId",   AttributeValue.builder().s(areaId.toString()).build());
+        if (areaName != null) item.put("areaName", AttributeValue.builder().s(areaName).build());
+
         try {
-            dynamoDbClient.putItem(r -> r
-                    .tableName(assetMapTable)
-                    .item(Map.of(
-                            "thing", AttributeValue.builder().s(thingName).build(),
-                            "houseId", AttributeValue.builder().s(houseId.toString()).build(),
-                            "role", AttributeValue.builder().s("CONTROLLER").build(),
-                            "status", AttributeValue.builder().s("PENDING").build(),
-                            "updatedAt", AttributeValue.builder()
-                                    .n(String.valueOf(System.currentTimeMillis())).build()
-                    ))
-            );
-            log.info("Synced controller {} to DynamoDB", thingName);
+            dynamoDbClient.putItem(r -> r.tableName(assetMapTable).item(item));
+            log.info("Synced controller {} to DynamoDB areaId={} areaName={}", thingName, areaId, areaName);
         } catch (Exception e) {
             log.error("DynamoDB sync failed for {}: {}", thingName, e.getMessage());
         }
@@ -186,17 +196,20 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                 .orElseThrow(() -> new NotFoundException("IoT device not found: " + thing));
 
         AssetItem asset = device.getAssetItem();
+        UUID houseId = asset.getHouseId();
         asset.setFunctionAreaId(areaId);
         assetItemRepository.save(asset);
 
-        ioTDeviceService.upsetToDynamoDB(device);
+        String areaName = getAreaName(houseId, areaId);
 
-        log.info("Assigned node {} to area {}", thing, areaId);
+        ioTDeviceService.upsetToDynamoDB(device, areaName);
+
+        log.info("Assigned node {} to area {} ({})", thing, areaId, areaName);
     }
 
     @Override
     @Transactional
-    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token) {
+    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token, UUID areaId) {
         if (!iotNodeTokenService.isTokenValid(serial, token)) {
             log.warn("Invalid token for serial={}", serial);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
@@ -207,19 +220,20 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         });
 
         IotController controller = controllerRepository.findByHouseId(houseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "No controller found for house " + houseId + ". Provision controller first."));
-
-        if (controller.getStatus() != IotControllerStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Controller not activated yet. Wait for controller to connect.");
-        }
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "No controller found for house " + houseId +
+                                ". Please provision controller first."));
 
         AssetCategory category = assetCategoryRepository.findByCode("IOT_NODE")
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "AssetCategory IOT_NODE not found. Contact admin."));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "AssetCategory IOT_NODE not found. Contact admin."));
 
         try {
             AssetItem assetItem = AssetItem.builder()
                     .houseId(houseId)
-                    .functionAreaId(null)
+                    .functionAreaId(areaId)
                     .category(category)
                     .displayName("Node " + serial.substring(Math.max(0, serial.length() - 8)))
                     .serialNumber(serial)
@@ -235,7 +249,9 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .build();
             IoTDevice savedDevice = ioTDeviceRepository.save(device);
 
-            ioTDeviceService.upsetToDynamoDB(savedDevice);
+            String areaName = getAreaName(houseId, areaId);
+
+            ioTDeviceService.upsetToDynamoDB(savedDevice, areaName);
 
             iotNodeTokenService.revokeToken(serial);
 
@@ -254,7 +270,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         } catch (Exception e) {
             log.error("provisionNode failed serial={} houseId={}", serial, houseId, e);
             throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Node provision failed: " + e.getMessage());
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Node provision failed: " + e.getMessage());
         }
     }
 
@@ -267,12 +284,31 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         device.setCapabilities(capabilities);
         ioTDeviceRepository.save(device);
 
-        ioTDeviceService.upsetToDynamoDB(device);
+        UUID houseId = device.getAssetItem().getHouseId();
+        UUID areaId  = device.getAssetItem().getFunctionAreaId();
+        String areaName = getAreaName(houseId, areaId);
+
+        ioTDeviceService.upsetToDynamoDB(device, areaName);
 
         log.info("Updated capabilities thing={} caps={}", thing, capabilities);
     }
 
     private String extractCertId(String arn) {
         return arn.substring(arn.lastIndexOf("/") + 1);
+    }
+
+    private String getAreaName(UUID houseId, UUID areaId) {
+        if (areaId == null) return null;
+        try {
+            var house = houseGrpc.getHouseById(houseId);
+            return house.getFunctionalAreasList().stream()
+                    .filter(a -> a.getId().equals(areaId.toString()))
+                    .map(FunctionalAreaResponse::getName)
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("Failed to get areaName houseId={} areaId={}: {}", houseId, areaId, e.getMessage());
+            return null;
+        }
     }
 }

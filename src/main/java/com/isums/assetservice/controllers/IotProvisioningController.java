@@ -1,6 +1,6 @@
 package com.isums.assetservice.controllers;
 
-import com.isums.assetservice.domains.IotProvisionResponse;
+import com.isums.assetservice.domains.dtos.IotProvisionResponse;
 import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
 import jakarta.validation.Valid;
@@ -20,7 +20,7 @@ public class IotProvisioningController {
     @PostMapping("/provision")
     @PreAuthorize("hasRole('LANDLORD') or hasRole('MANAGER')")
     public ApiResponse<IotProvisionResponse> provision(@PathVariable UUID houseId, @RequestBody IotProvisionRequest req) {
-        var res = iotProvisioningService.provisionController(houseId, req.deviceId());
+        var res = iotProvisioningService.provisionController(houseId, req.areaId(), req.deviceId());
         return ApiResponses.created(res, "IoT controller provisioned successfully");
     }
 
@@ -47,16 +47,13 @@ public class IotProvisioningController {
     @PostMapping("/provision-node")
     @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
     public ApiResponse<NodeProvisionResponse> provisionNode(@PathVariable UUID houseId, @RequestBody ProvisionNodeRequest req) {
-        var res = iotProvisioningService.provisionNode(houseId, req.serial(), req.token());
+        var res = iotProvisioningService.provisionNode(houseId, req.serial(), req.token(), req.areaId());
         return ApiResponses.ok(res, "Node provisioned");
     }
 
     @PutMapping("/nodes/{thing}/capabilities")
     @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
-    public ApiResponse<Void> updateCapabilities(
-            @PathVariable UUID houseId,
-            @PathVariable String thing,
-            @RequestBody @Valid UpdateCapabilitiesRequest req) {
+    public ApiResponse<Void> updateCapabilities(@PathVariable UUID houseId, @PathVariable String thing, @RequestBody @Valid UpdateCapabilitiesRequest req) {
         iotProvisioningService.updateNodeCapabilities(thing, req.capabilities());
         return ApiResponses.noContent();
     }

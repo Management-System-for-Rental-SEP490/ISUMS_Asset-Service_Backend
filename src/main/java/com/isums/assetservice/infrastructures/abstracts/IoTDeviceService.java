@@ -8,7 +8,7 @@ public interface IoTDeviceService {
 
     public IoTDeviceDto getByThing(String thing);
 
-    public void upsetToDynamoDB(IoTDevice device);
+    public void upsetToDynamoDB(IoTDevice device, String areaName);
 
     public void createIoTDevice(CreateIoTDeviceRequest request);
 }
