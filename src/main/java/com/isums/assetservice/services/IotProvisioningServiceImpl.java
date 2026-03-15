@@ -2,13 +2,17 @@ package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.IotProvisionResponse;
 import com.isums.assetservice.domains.dtos.ControllerInfoResponse;
+import com.isums.assetservice.domains.dtos.NodeProvisionResponse;
+import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
+import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.domains.enums.IotControllerStatus;
 import com.isums.assetservice.exceptions.ConflictException;
-import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
+import com.isums.assetservice.infrastructures.abstracts.IotNodeTokenService;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
+import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
 import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
@@ -16,7 +20,10 @@ import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeAction;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -39,6 +46,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     private final IoTDeviceRepository ioTDeviceRepository;
     private final AssetItemRepository assetItemRepository;
     private final IoTDeviceServiceImpl ioTDeviceService;
+    private final IotNodeTokenService iotNodeTokenService;
+    private final AssetCategoryRepository assetCategoryRepository;
 
     @Value("${app.iot.policy-name}")
     private String policyName;
@@ -148,9 +157,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     public void deprovisionController(UUID houseId) {
-        controllerRepository.findAll().stream()
-                .filter(ctrl -> ctrl.getHouseId().equals(houseId))
-                .findFirst().ifPresent(ctrl -> {
+        controllerRepository.findByHouseId(houseId).ifPresent(ctrl -> {
                     try {
                         iotClient.detachThingPrincipal(r -> r.thingName(ctrl.getThingName()).principal(ctrl.getCertificateArn()));
                         iotClient.updateCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).newStatus(CertificateStatus.INACTIVE));
@@ -168,9 +175,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     public ControllerInfoResponse getControllerByHouse(UUID houseId) {
-        return controllerRepository.findAll().stream()
-                .filter(ctrl -> ctrl.getHouseId().equals(houseId))
-                .findFirst().map(ctrl -> new ControllerInfoResponse(ctrl.getThingName(), ctrl.getDeviceId()))
+        return controllerRepository.findByHouseId(houseId).map(ctrl -> new ControllerInfoResponse(ctrl.getThingName(), ctrl.getDeviceId()))
                 .orElseThrow(() -> new NotFoundException("Controller not found for house " + houseId));
     }
 
@@ -186,6 +191,70 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         ioTDeviceService.upsetToDynamoDB(device);
 
         log.info("Assigned node {} to area {}", thing, areaId);
+    }
+
+    @Override
+    @Transactional
+    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token) {
+        if (!iotNodeTokenService.isTokenValid(serial, token)) {
+            log.warn("Invalid token for serial={}", serial);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+        }
+
+        ioTDeviceRepository.findBySerialNumber(serial).ifPresent(d -> {
+            throw new ConflictException("Node " + serial + " already provisioned");
+        });
+
+        IotController controller = controllerRepository.findByHouseId(houseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "No controller found for house " + houseId + ". Provision controller first."));
+
+        if (controller.getStatus() != IotControllerStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Controller not activated yet. Wait for controller to connect.");
+        }
+
+        AssetCategory category = assetCategoryRepository.findByCode("IOT_NODE")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "AssetCategory IOT_NODE not found. Contact admin."));
+
+        try {
+            AssetItem assetItem = AssetItem.builder()
+                    .houseId(houseId)
+                    .functionAreaId(null)
+                    .category(category)
+                    .displayName("Node " + serial.substring(Math.max(0, serial.length() - 8)))
+                    .serialNumber(serial)
+                    .conditionPercent(100)
+                    .status(AssetStatus.IN_USE)
+                    .build();
+            AssetItem savedAsset = assetItemRepository.save(assetItem);
+
+            IoTDevice device = IoTDevice.builder()
+                    .thing(serial)
+                    .serialNumber(serial)
+                    .assetItem(savedAsset)
+                    .build();
+            IoTDevice savedDevice = ioTDeviceRepository.save(device);
+
+            ioTDeviceService.upsetToDynamoDB(savedDevice);
+
+            iotNodeTokenService.revokeToken(serial);
+
+            log.info("Provisioned node serial={} houseId={} assetId={}",
+                    serial, houseId, savedAsset.getId());
+
+            return new NodeProvisionResponse(
+                    serial,
+                    controller.getDeviceId(),
+                    houseId.toString(),
+                    savedAsset.getId().toString()
+            );
+
+        } catch (ConflictException | ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("provisionNode failed serial={} houseId={}", serial, houseId, e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Node provision failed: " + e.getMessage());
+        }
     }
 
     private String extractCertId(String arn) {

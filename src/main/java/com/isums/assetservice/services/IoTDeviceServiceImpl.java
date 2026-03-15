@@ -46,8 +46,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 iot.getHouseId(),
                 iot.getAreaId(),
                 iot.getCategoryId(),
-                iot.getCategoryCode(),
-                iot.getDetectionType()
+                iot.getCategoryCode()
         );
     }
 

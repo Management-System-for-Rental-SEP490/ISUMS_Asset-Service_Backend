@@ -31,7 +31,7 @@ public class IotNodeTokenServiceImpl implements IotNodeTokenService {
             String key = "iot-token:" + serial;
             redis.opsForValue().set(key, token, TTL);
 
-            log.info("Generated token for serial {}: {}", serial, token);
+            log.info("Generated token for serial={}", serial);
 
             return token;
         } catch (Exception e) {

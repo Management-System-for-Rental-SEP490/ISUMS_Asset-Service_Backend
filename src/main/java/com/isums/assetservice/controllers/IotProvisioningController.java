@@ -36,10 +36,17 @@ public class IotProvisioningController {
         return ApiResponses.ok(res, "IoT controller retrieved successfully");
     }
 
-    @PutMapping("/iot/nodes/{thing}/assign-area")
+    @PutMapping("/nodes/{thing}/assign-area")
     @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
     public ApiResponse<Void> assignArea(@PathVariable UUID houseId, @PathVariable String thing, @RequestBody AssignAreaRequest req) {
         iotProvisioningService.assignNodeToArea(thing, req.areaId());
         return ApiResponses.noContent();
+    }
+
+    @PostMapping("/provision-node")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
+    public ApiResponse<NodeProvisionResponse> provisionNode(@PathVariable UUID houseId, @RequestBody ProvisionNodeRequest req) {
+        var res = iotProvisioningService.provisionNode(houseId, req.serial(), req.token());
+        return ApiResponses.ok(res, "Node provisioned");
     }
 }

@@ -12,7 +12,6 @@ public record IoTDeviceDto(
         UUID houseId,
         UUID areaId,
         UUID categoryId,
-        String categoryCode,
-        DetectionType detectionType
+        String categoryCode
 ) {
 }

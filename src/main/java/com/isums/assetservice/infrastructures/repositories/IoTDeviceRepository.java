@@ -30,4 +30,6 @@ public interface IoTDeviceRepository extends JpaRepository<IoTDevice, UUID> {
     Optional<IoTDeviceView> findViewByThing(@Param("thing") String thing);
 
     Optional<IoTDevice> findByThing(String thing);
+
+    Optional<IoTDevice> findBySerialNumber(String serialNumber);
 }
