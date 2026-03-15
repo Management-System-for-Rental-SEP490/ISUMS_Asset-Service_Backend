@@ -58,17 +58,6 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             AssetItem created = assetItemRepository.save(assetItem);
 
-
-            if (request.isIoTDevice()) {
-                CreateIoTDeviceRequest iotRequest = new CreateIoTDeviceRequest(
-                        "ctrl-" + request.houseId(),
-                        request.serialNumber(),
-                        created
-                );
-
-                iotDeviceService.createIoTDevice(iotRequest);
-            }
-
             return assetMapper.mapAssetItem(created);
 
         } catch (Exception ex) {
