@@ -20,8 +20,7 @@ public interface IoTDeviceRepository extends JpaRepository<IoTDevice, UUID> {
                      a.houseId as houseId,
                      a.functionAreaId as areaId,
                      c.id as categoryId,
-                     c.code as categoryCode,
-                     c.detectionType as detectionType
+                     c.code as categoryCode
                  from IoTDevice d
                  join d.assetItem a
                  join a.category c
