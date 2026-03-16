@@ -87,14 +87,16 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
             iotClient.attachThingPrincipal(r -> r.thingName(thingName).principal(certResult.certificateArn()));
 
-            IotController controller = IotController.builder()
-                    .deviceId(deviceId)
-                    .houseId(houseId)
-                    .areaId(areaId)
-                    .thingName(thingName)
-                    .certificateArn(certResult.certificateArn())
-                    .status(IotControllerStatus.PENDING)
-                    .build();
+            IotController controller = deviceExisted
+                    .filter(c -> c.getStatus() == IotControllerStatus.DEPROVISIONED)
+                    .orElse(IotController.builder().build());
+
+            controller.setDeviceId(deviceId);
+            controller.setHouseId(houseId);
+            controller.setAreaId(areaId);
+            controller.setThingName(thingName);
+            controller.setCertificateArn(certResult.certificateArn());
+            controller.setStatus(IotControllerStatus.PENDING);
             controllerRepository.save(controller);
 
             syncControllerToDynamoDB(thingName, houseId, areaId);
@@ -140,9 +142,11 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     public void activateController(String thingName) {
-        controllerRepository.findByThingName(thingName).ifPresent(ctrl -> {
-            if (ctrl.getStatus() != IotControllerStatus.PENDING) return;
-
+        controllerRepository.findByThingName(thingName).ifPresentOrElse(ctrl -> {
+            if (ctrl.getStatus() == IotControllerStatus.ACTIVE) {
+                log.info("Controller {} already active", thingName);
+                return;
+            }
             ctrl.setStatus(IotControllerStatus.ACTIVE);
             ctrl.setActivatedAt(Instant.now());
             controllerRepository.save(ctrl);
@@ -153,34 +157,63 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .attributeUpdates(Map.of(
                             "status", AttributeValueUpdate.builder()
                                     .value(AttributeValue.builder().s("ACTIVE").build())
-                                    .action(AttributeAction.PUT)
-                                    .build(),
+                                    .action(AttributeAction.PUT).build(),
                             "activatedAt", AttributeValueUpdate.builder()
-                                    .value(AttributeValue.builder().n(
-                                            String.valueOf(System.currentTimeMillis())).build())
-                                    .action(AttributeAction.PUT)
-                                    .build()
+                                    .value(AttributeValue.builder()
+                                            .n(String.valueOf(System.currentTimeMillis())).build())
+                                    .action(AttributeAction.PUT).build()
                     ))
             );
-            log.info("Activated controller {} → DynamoDB synced", thingName);
-        });
+            log.info("Activated controller {}", thingName);
+        }, () -> log.warn("Controller not found: {}", thingName));
     }
 
     @Override
     public void deprovisionController(UUID houseId) {
         controllerRepository.findByHouseId(houseId).ifPresent(ctrl -> {
             try {
-                iotClient.detachThingPrincipal(r -> r.thingName(ctrl.getThingName()).principal(ctrl.getCertificateArn()));
-                iotClient.updateCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).newStatus(CertificateStatus.INACTIVE));
-                iotClient.deleteCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).forceDelete(true));
-                iotClient.deleteThing(r -> r.thingName(ctrl.getThingName()));
-
-                ctrl.setStatus(IotControllerStatus.DEPROVISIONED);
-                controllerRepository.save(ctrl);
-                log.info("Deprovisioned controller {}", ctrl.getThingName());
+                iotClient.listThingPrincipals(r -> r.thingName(ctrl.getThingName()))
+                        .principals()
+                        .forEach(principal -> {
+                            try {
+                                iotClient.detachThingPrincipal(r -> r.thingName(ctrl.getThingName()).principal(principal));
+                                log.info("Detached principal {} from {}", principal, ctrl.getThingName());
+                            } catch (Exception e) {
+                                log.warn("detachThingPrincipal skipped: {}", e.getMessage());
+                            }
+                        });
             } catch (Exception e) {
-                log.error("Deprovision failed: {}", ctrl.getThingName(), e);
+                log.warn("listThingPrincipals skipped: {}", e.getMessage());
             }
+
+            try {
+                iotClient.updateCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).newStatus(CertificateStatus.INACTIVE));
+            } catch (Exception e) {
+                log.warn("updateCertificate skipped: {}", e.getMessage());
+            }
+
+            try {
+                iotClient.deleteCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).forceDelete(true));
+            } catch (Exception e) {
+                log.warn("deleteCertificate skipped: {}", e.getMessage());
+            }
+
+            try {
+                iotClient.deleteThing(r -> r.thingName(ctrl.getThingName()));
+            } catch (Exception e) {
+                log.warn("deleteThing skipped: {}", e.getMessage());
+            }
+
+            ctrl.setStatus(IotControllerStatus.DEPROVISIONED);
+            controllerRepository.save(ctrl);
+
+            try {
+                dynamoDbClient.deleteItem(r -> r.tableName(assetMapTable).key(Map.of("thing", AttributeValue.builder().s(ctrl.getThingName()).build())));
+            } catch (Exception e) {
+                log.warn("DynamoDB deleteItem skipped: {}", e.getMessage());
+            }
+
+            log.info("Deprovisioned controller {}", ctrl.getThingName());
         });
     }
 
