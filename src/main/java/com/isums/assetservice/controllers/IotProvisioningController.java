@@ -2,6 +2,7 @@ package com.isums.assetservice.controllers;
 
 import com.isums.assetservice.domains.dtos.IotProvisionResponse;
 import com.isums.assetservice.domains.dtos.*;
+import com.isums.assetservice.domains.enums.Severity;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -56,5 +57,13 @@ public class IotProvisioningController {
     public ApiResponse<Void> updateCapabilities(@PathVariable UUID houseId, @PathVariable String thing, @RequestBody @Valid UpdateCapabilitiesRequest req) {
         iotProvisioningService.updateNodeCapabilities(thing, req.capabilities());
         return ApiResponses.noContent();
+    }
+
+    @GetMapping("/alerts")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN','TENANT')")
+    public ApiResponse<PagedResponse<AlertDto>> getAlerts(@PathVariable UUID houseId, @RequestParam(defaultValue = "10") int limit, @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) String date, @RequestParam(required = false) Severity level) {
+        var res = iotProvisioningService.getAlerts(houseId, limit, cursor, date, level);
+        return ApiResponses.ok(res, "Alerts retrieved");
     }
 }

@@ -1,14 +1,13 @@
 package com.isums.assetservice.services;
 
-import com.isums.assetservice.domains.dtos.IotProvisionResponse;
-import com.isums.assetservice.domains.dtos.ControllerInfoResponse;
-import com.isums.assetservice.domains.dtos.NodeProvisionResponse;
+import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.domains.enums.IotControllerStatus;
+import com.isums.assetservice.domains.enums.Severity;
 import com.isums.assetservice.exceptions.ConflictException;
 import com.isums.assetservice.infrastructures.abstracts.IotNodeTokenService;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
@@ -27,17 +26,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeAction;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValueUpdate;
+import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.CertificateStatus;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +52,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     private final IotNodeTokenService iotNodeTokenService;
     private final AssetCategoryRepository assetCategoryRepository;
     private final HouseGrpcImpl houseGrpc;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.iot.policy-name}")
     private String policyName;
@@ -62,6 +62,9 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Value("${app.ddb.assetMapTable}")
     private String assetMapTable;
+
+    @Value("${app.ddb.alertsTable}")
+    private String alertsTable;
 
     @Override
     public IotProvisionResponse provisionController(UUID houseId, UUID areaId, String deviceId) {
@@ -122,14 +125,14 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         String areaName = getAreaName(houseId, areaId);
 
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("thing",     AttributeValue.builder().s(thingName).build());
-        item.put("houseId",   AttributeValue.builder().s(houseId.toString()).build());
-        item.put("role",      AttributeValue.builder().s("CONTROLLER").build());
-        item.put("status",    AttributeValue.builder().s("PENDING").build());
+        item.put("thing", AttributeValue.builder().s(thingName).build());
+        item.put("houseId", AttributeValue.builder().s(houseId.toString()).build());
+        item.put("role", AttributeValue.builder().s("CONTROLLER").build());
+        item.put("status", AttributeValue.builder().s("PENDING").build());
         item.put("updatedAt", AttributeValue.builder()
                 .n(String.valueOf(System.currentTimeMillis())).build());
 
-        if (areaId != null)   item.put("areaId",   AttributeValue.builder().s(areaId.toString()).build());
+        if (areaId != null) item.put("areaId", AttributeValue.builder().s(areaId.toString()).build());
         if (areaName != null) item.put("areaName", AttributeValue.builder().s(areaName).build());
 
         try {
@@ -318,12 +321,78 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         ioTDeviceRepository.save(device);
 
         UUID houseId = device.getAssetItem().getHouseId();
-        UUID areaId  = device.getAssetItem().getFunctionAreaId();
+        UUID areaId = device.getAssetItem().getFunctionAreaId();
         String areaName = getAreaName(houseId, areaId);
 
         ioTDeviceService.upsetToDynamoDB(device, areaName);
 
         log.info("Updated capabilities thing={} caps={}", thing, capabilities);
+    }
+
+    @Override
+    public PagedResponse<AlertDto> getAlerts(UUID houseId, int limit, String cursor, String date, Severity level) {
+        try {
+            String dateStr = (date != null && !date.isBlank())
+                    ? date
+                    : LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).toString();
+
+            String pk = houseId + "#" + dateStr;
+
+            Map<String, AttributeValue> exprValues = new HashMap<>();
+            exprValues.put(":pk", AttributeValue.builder().s(pk).build());
+
+            String filterExpr = null;
+            Map<String, String> exprNames = null;
+            if (level != null) {
+                filterExpr = "#lv = :lv";
+                exprNames = Map.of("#lv", "level");
+                exprValues.put(":lv", AttributeValue.builder().s(level.toString().toUpperCase()).build());
+            }
+
+            QueryRequest.Builder queRequest = QueryRequest.builder()
+                    .tableName(alertsTable)
+                    .indexName("house-date-ts-index")
+                    .keyConditionExpression("houseDatePartition = :pk")
+                    .expressionAttributeValues(exprValues)
+                    .scanIndexForward(false)
+                    .limit(limit);
+
+            if (filterExpr != null) {
+                queRequest.filterExpression(filterExpr);
+            }
+
+            if (exprNames != null) {
+                queRequest.expressionAttributeNames(exprNames);
+            }
+
+            if (cursor != null && !cursor.isBlank()) {
+                Map<String, AttributeValue> startKey = decodeCursor(cursor);
+                if (!startKey.isEmpty()) {
+                    queRequest.exclusiveStartKey(startKey);
+                }
+            }
+
+            QueryResponse queResponse = dynamoDbClient.query(queRequest.build());
+
+            List<AlertDto> items = queResponse.items().stream().map(this::mapToAlertDto).toList();
+
+            String nextCursor = null;
+            if (queResponse.lastEvaluatedKey() != null && !queResponse.lastEvaluatedKey().isEmpty()) {
+                nextCursor = encodeCursor(queResponse.lastEvaluatedKey());
+            }
+
+            log.info("getAlerts: houseId={} date={} level={} count={} hasMore={}", houseId, dateStr, level, items.size(), nextCursor != null);
+
+            return PagedResponse.<AlertDto>builder()
+                    .items(items)
+                    .nextCursor(nextCursor)
+                    .hasMore(nextCursor != null)
+                    .build();
+        } catch (Exception e) {
+            log.error("getAlerts failed houseId={}", houseId, e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to get alerts");
+        }
     }
 
     private String extractCertId(String arn) {
@@ -341,6 +410,90 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .orElse(null);
         } catch (Exception e) {
             log.warn("Failed to get areaName houseId={} areaId={}: {}", houseId, areaId, e.getMessage());
+            return null;
+        }
+    }
+
+    private Map<String, AttributeValue> decodeCursor(String cursor) {
+        try {
+            byte[] bytes = Base64.getUrlDecoder().decode(cursor);
+            String json = new String(bytes, StandardCharsets.UTF_8);
+            JsonNode root = objectMapper.readTree(json);
+            Map<String, AttributeValue> result = new HashMap<>();
+            root.properties().forEach(entry -> {
+                JsonNode value = entry.getValue();
+                if (value.has("S")) {
+                    result.put(entry.getKey(), AttributeValue.builder().s(value.get("S").asString()).build());
+                } else if (value.has(("N"))) {
+                    result.put(entry.getKey(), AttributeValue.builder().n(value.get("N").asString()).build());
+                }
+            });
+
+            return result;
+        } catch (Exception e) {
+            log.warn("decodeCursor failed: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private AlertDto mapToAlertDto(Map<String, AttributeValue> item) {
+        return AlertDto.builder()
+                .alertId(str(item, "alertId"))
+                .houseId(str(item, "houseId"))
+                .areaId(str(item, "areaId"))
+                .areaName(str(item, "areaName"))
+                .thing(str(item, "thing"))
+                .alertType(str(item, "alertType"))
+                .title(str(item, "title"))
+                .detail(str(item, "detail"))
+                .metric(str(item, "metric"))
+                .value(num(item, "value"))
+                .level(str(item, "level"))
+                .resolved(item.containsKey("resolved") && Boolean.TRUE.equals(item.get("resolved").bool()))
+                .ts(numLong(item, "ts"))
+                .date(str(item, "date"))
+                .build();
+    }
+
+    private String encodeCursor(Map<String, AttributeValue> lastKey) {
+        try {
+            Map<String, Map<String, String>> simple = new HashMap<>();
+            lastKey.forEach((k, v) -> {
+                Map<String, String> typeVal = new HashMap<>();
+                if (v.s() != null) typeVal.put("S", v.s());
+                else if (v.n() != null) typeVal.put("N", v.n());
+                simple.put(k, typeVal);
+            });
+
+            String json = objectMapper.writeValueAsString(simple);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            log.warn("encodeCursor failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String str(Map<String, AttributeValue> item, String key) {
+        AttributeValue v = item.get(key);
+        return (v != null && v.s() != null) ? v.s() : null;
+    }
+
+    private Double num(Map<String, AttributeValue> item, String key) {
+        AttributeValue v = item.get(key);
+        if (v == null || v.n() == null) return null;
+        try {
+            return Double.parseDouble(v.n());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Long numLong(Map<String, AttributeValue> item, String key) {
+        AttributeValue v = item.get(key);
+        if (v == null || v.n() == null) return null;
+        try {
+            return Long.parseLong(v.n());
+        } catch (NumberFormatException e) {
             return null;
         }
     }
