@@ -2,21 +2,31 @@ package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.dtos.CreateIoTDeviceRequest;
 import com.isums.assetservice.domains.dtos.IoTDeviceDto;
+import com.isums.assetservice.domains.dtos.IoTDeviceMapControllerDto;
+import com.isums.assetservice.domains.dtos.IotControllerDto;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.IoTDevice;
-import com.isums.assetservice.domains.enums.AssetStatus;
+import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
+import com.isums.assetservice.infrastructures.grpcs.HouseGrpcImpl;
+import com.isums.assetservice.infrastructures.mapper.IoTControllerMapper;
 import com.isums.assetservice.infrastructures.mapper.IoTDeviceMapper;
 import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
+import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
+import com.isums.houseservice.grpc.FunctionalAreaResponse;
+import com.isums.houseservice.grpc.HouseResponse;
+import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +35,10 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
 
     private final IoTDeviceRepository iotDeviceRepository;
     private final DynamoDbClient dynamoDbClient;
+    private final IotControllerRepository iotControllerRepository;
+    private final IoTControllerMapper ioTControllerMapper;
+    private final IoTDeviceMapper ioTDeviceMapper;
+    private final HouseGrpcImpl houseGrpc;
 
     @Value("${app.ddb.assetMapTable}")
     private String tableName;
@@ -61,18 +75,18 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
             return;
         }
 
-        String houseId      = asset.getHouseId().toString();
+        String houseId = asset.getHouseId().toString();
         String categoryCode = asset.getCategory().getCode();
-        UUID areaId     = asset.getFunctionAreaId();
+        UUID areaId = asset.getFunctionAreaId();
 
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("thing",        av(thing));
-        item.put("houseId",      av(houseId));
-        item.put("role",         av("NODE"));
-        item.put("assetId",      av(asset.getId().toString()));
+        item.put("thing", av(thing));
+        item.put("houseId", av(houseId));
+        item.put("role", av("NODE"));
+        item.put("assetId", av(asset.getId().toString()));
         item.put("categoryCode", av(categoryCode));
-        item.put("status",       av("ACTIVE"));
-        item.put("updatedAt",    avn(String.valueOf(System.currentTimeMillis())));
+        item.put("status", av("ACTIVE"));
+        item.put("updatedAt", avn(String.valueOf(System.currentTimeMillis())));
 
         if (areaId != null) {
             item.put("areaId", av(areaId.toString()));
@@ -100,8 +114,13 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
         log.info("Synced node {} to DynamoDB houseId={} areaId={}", thing, houseId, areaId);
     }
 
-    private AttributeValue av(String v)  { return AttributeValue.builder().s(v).build(); }
-    private AttributeValue avn(String v) { return AttributeValue.builder().n(v).build(); }
+    private AttributeValue av(String v) {
+        return AttributeValue.builder().s(v).build();
+    }
+
+    private AttributeValue avn(String v) {
+        return AttributeValue.builder().n(v).build();
+    }
 
     @Override
     public void createIoTDevice(CreateIoTDeviceRequest request) {
@@ -113,5 +132,42 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
 
         var savedDevice = iotDeviceRepository.save(device);
         upsetToDynamoDB(savedDevice, request.areaName());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public IotControllerDto getAllIotByHouse(UUID houseId) {
+        try {
+            IotController controller = iotControllerRepository.findByHouseId(houseId)
+                    .orElseThrow(() -> new NotFoundException("IoT controller not found for house=" + houseId));
+
+            HouseResponse house = houseGrpc.getHouseById(houseId);
+
+            String areaName = null;
+            if (controller.getAreaId() != null) {
+                areaName = house.getFunctionalAreasList().stream().filter(a -> a.getId()
+                                .equals(controller.getAreaId().toString()))
+                        .map(FunctionalAreaResponse::getName).findFirst().orElse(null);
+            }
+
+            IotControllerDto controllerDto = ioTControllerMapper.toIotControllerDto(controller);
+            controllerDto.setAreaName(areaName);
+            controllerDto.setHouseName(house.getName());
+
+            Map<String, String> areaNameMap = house.getFunctionalAreasList().stream()
+                    .collect(Collectors.toMap(
+                            FunctionalAreaResponse::getId,
+                            FunctionalAreaResponse::getName
+                    ));
+
+            List<IoTDevice> devices = iotDeviceRepository.findByAssetItem_HouseId(houseId);
+
+            List<IoTDeviceMapControllerDto> deviceDtos = ioTDeviceMapper.toIoTDeviceMapControllerDtoList(devices, areaNameMap);
+            controllerDto.setDevices(deviceDtos);
+
+            return controllerDto;
+        } catch (Exception ex) {
+            throw new RuntimeException("Error to get iot controller information" + ex.getMessage());
+        }
     }
 }
