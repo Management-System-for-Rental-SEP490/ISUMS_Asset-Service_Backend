@@ -1,5 +1,6 @@
 package com.isums.assetservice.domains.dtos;
 
+import com.isums.assetservice.domains.enums.AssetStatus;
 import lombok.Builder;
 import lombok.Value;
 
@@ -15,4 +16,5 @@ public class IoTDeviceMapControllerDto {
     UUID assetId;
     String areaName;
     String categoryCode;
+    AssetStatus status;
 }

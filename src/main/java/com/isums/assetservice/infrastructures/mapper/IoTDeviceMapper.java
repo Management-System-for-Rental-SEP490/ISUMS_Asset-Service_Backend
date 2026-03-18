@@ -19,6 +19,7 @@ public interface IoTDeviceMapper {
     @Mapping(source = "assetItem.id", target = "assetId")
     @Mapping(source = "assetItem.displayName", target = "displayName")
     @Mapping(source = "assetItem.category.code", target = "categoryCode")
+    @Mapping(source = "assetItem.status", target = "status")
     @Mapping(target = "areaName", ignore = true)
     IoTDeviceMapControllerDto toIoTDeviceMapControllerDto(IoTDevice iotDevice, @Context Map<String, String> areaNameMap);
 
