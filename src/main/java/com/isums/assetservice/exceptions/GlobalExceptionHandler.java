@@ -76,4 +76,16 @@ public class GlobalExceptionHandler {
                 .body(ApiResponses.fail(HttpStatus.CONFLICT, ex.getMessage()));
     }
 
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(NotFoundException ex) {
+        ApiResponse<Void> res = ApiResponses.fail(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                List.of(ApiError.builder()
+                        .code("NOT_FOUND")
+                        .message(ex.getMessage())
+                        .build())
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(res);
+    }
 }
