@@ -19,6 +19,7 @@ import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -136,6 +137,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "allIoT", key = "#houseId")
     public IotControllerDto getAllIotByHouse(UUID houseId) {
         try {
             IotController controller = iotControllerRepository.findByHouseId(houseId)
