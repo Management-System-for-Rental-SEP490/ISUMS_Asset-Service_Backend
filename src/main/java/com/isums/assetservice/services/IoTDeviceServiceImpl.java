@@ -7,6 +7,7 @@ import com.isums.assetservice.domains.dtos.IotControllerDto;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
+import com.isums.assetservice.exceptions.NotFoundException;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.grpcs.HouseGrpcImpl;
 import com.isums.assetservice.infrastructures.mapper.IoTControllerMapper;
@@ -15,7 +16,6 @@ import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
 import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
 import com.isums.houseservice.grpc.FunctionalAreaResponse;
 import com.isums.houseservice.grpc.HouseResponse;
-import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -139,37 +139,33 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
     @Transactional(readOnly = true)
     @Cacheable(value = "allIoT", key = "#houseId")
     public IotControllerDto getAllIotByHouse(UUID houseId) {
-        try {
-            IotController controller = iotControllerRepository.findByHouseId(houseId)
-                    .orElseThrow(() -> new NotFoundException("IoT controller not found for house=" + houseId));
+        IotController controller = iotControllerRepository.findByHouseId(houseId)
+                .orElseThrow(() -> new NotFoundException("IoT controller not found for house: " + houseId));
 
-            HouseResponse house = houseGrpc.getHouseById(houseId);
+        HouseResponse house = houseGrpc.getHouseById(houseId);
 
-            String areaName = null;
-            if (controller.getAreaId() != null) {
-                areaName = house.getFunctionalAreasList().stream().filter(a -> a.getId()
-                                .equals(controller.getAreaId().toString()))
-                        .map(FunctionalAreaResponse::getName).findFirst().orElse(null);
-            }
-
-            IotControllerDto controllerDto = ioTControllerMapper.toIotControllerDto(controller);
-            controllerDto.setAreaName(areaName);
-            controllerDto.setHouseName(house.getName());
-
-            Map<String, String> areaNameMap = house.getFunctionalAreasList().stream()
-                    .collect(Collectors.toMap(
-                            FunctionalAreaResponse::getId,
-                            FunctionalAreaResponse::getName
-                    ));
-
-            List<IoTDevice> devices = iotDeviceRepository.findByAssetItem_HouseId(houseId);
-
-            List<IoTDeviceMapControllerDto> deviceDtos = ioTDeviceMapper.toIoTDeviceMapControllerDtoList(devices, areaNameMap);
-            controllerDto.setDevices(deviceDtos);
-
-            return controllerDto;
-        } catch (Exception ex) {
-            throw new RuntimeException("Error to get iot controller information" + ex.getMessage());
+        String areaName = null;
+        if (controller.getAreaId() != null) {
+            areaName = house.getFunctionalAreasList().stream().filter(a -> a.getId()
+                            .equals(controller.getAreaId().toString()))
+                    .map(FunctionalAreaResponse::getName).findFirst().orElse(null);
         }
+
+        IotControllerDto controllerDto = ioTControllerMapper.toIotControllerDto(controller);
+        controllerDto.setAreaName(areaName);
+        controllerDto.setHouseName(house.getName());
+
+        Map<String, String> areaNameMap = house.getFunctionalAreasList().stream()
+                .collect(Collectors.toMap(
+                        FunctionalAreaResponse::getId,
+                        FunctionalAreaResponse::getName
+                ));
+
+        List<IoTDevice> devices = iotDeviceRepository.findByAssetItem_HouseId(houseId);
+
+        List<IoTDeviceMapControllerDto> deviceDtos = ioTDeviceMapper.toIoTDeviceMapControllerDtoList(devices, areaNameMap);
+        controllerDto.setDevices(deviceDtos);
+
+        return controllerDto;
     }
 }
