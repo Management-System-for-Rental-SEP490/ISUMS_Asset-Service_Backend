@@ -1,4 +1,6 @@
 package com.isums.assetservice.domains.dtos;
 
-public record ProvisionNodeRequest(String token, String serial) {
+import java.util.UUID;
+
+public record ProvisionNodeRequest(String token, String serial, UUID areaId) {
 }

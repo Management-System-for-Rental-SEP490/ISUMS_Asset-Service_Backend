@@ -1,21 +1,22 @@
 package com.isums.assetservice.services;
 
-import com.isums.assetservice.domains.IotProvisionResponse;
-import com.isums.assetservice.domains.dtos.ControllerInfoResponse;
-import com.isums.assetservice.domains.dtos.NodeProvisionResponse;
+import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.domains.enums.IotControllerStatus;
+import com.isums.assetservice.domains.enums.Severity;
 import com.isums.assetservice.exceptions.ConflictException;
 import com.isums.assetservice.infrastructures.abstracts.IotNodeTokenService;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
+import com.isums.assetservice.infrastructures.grpcs.HouseGrpcImpl;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
 import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
+import com.isums.houseservice.grpc.FunctionalAreaResponse;
 import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,16 +26,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeAction;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValueUpdate;
+import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.CertificateStatus;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +51,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     private final IoTDeviceServiceImpl ioTDeviceService;
     private final IotNodeTokenService iotNodeTokenService;
     private final AssetCategoryRepository assetCategoryRepository;
+    private final HouseGrpcImpl houseGrpc;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.iot.policy-name}")
     private String policyName;
@@ -59,14 +63,19 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     @Value("${app.ddb.assetMapTable}")
     private String assetMapTable;
 
+    @Value("${app.ddb.alertsTable}")
+    private String alertsTable;
+
     @Override
-    public IotProvisionResponse provisionController(UUID houseId, String deviceId) {
+    public IotProvisionResponse provisionController(UUID houseId, UUID areaId, String deviceId) {
         var deviceExisted = controllerRepository.findByDeviceId(deviceId);
         if (deviceExisted.isPresent()) {
             var ctrl = deviceExisted.get();
             log.info("Device {} already provisioned for house {}", deviceId, ctrl.getHouseId());
-            throw new ConflictException(
-                    "Device " + deviceId + " already provisioned for house " + ctrl.getHouseId());
+            if (ctrl.getStatus() != IotControllerStatus.DEPROVISIONED) {
+                throw new ConflictException(
+                        "Device " + deviceId + " already provisioned for house " + ctrl.getHouseId());
+            }
         }
 
         String thingName = "ctrl-" + deviceId.replace(":", "").toLowerCase();
@@ -81,16 +90,19 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
             iotClient.attachThingPrincipal(r -> r.thingName(thingName).principal(certResult.certificateArn()));
 
-            IotController controller = IotController.builder()
-                    .deviceId(deviceId)
-                    .houseId(houseId)
-                    .thingName(thingName)
-                    .certificateArn(certResult.certificateArn())
-                    .status(IotControllerStatus.PENDING)
-                    .build();
+            IotController controller = deviceExisted
+                    .filter(c -> c.getStatus() == IotControllerStatus.DEPROVISIONED)
+                    .orElse(IotController.builder().build());
+
+            controller.setDeviceId(deviceId);
+            controller.setHouseId(houseId);
+            controller.setAreaId(areaId);
+            controller.setThingName(thingName);
+            controller.setCertificateArn(certResult.certificateArn());
+            controller.setStatus(IotControllerStatus.PENDING);
             controllerRepository.save(controller);
 
-            syncControllerToDynamoDB(thingName, houseId);
+            syncControllerToDynamoDB(thingName, houseId, areaId);
 
             return new IotProvisionResponse(
                     thingName,
@@ -109,20 +121,23 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         }
     }
 
-    private void syncControllerToDynamoDB(String thingName, UUID houseId) {
+    private void syncControllerToDynamoDB(String thingName, UUID houseId, UUID areaId) {
+        String areaName = getAreaName(houseId, areaId);
+
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("thing", AttributeValue.builder().s(thingName).build());
+        item.put("houseId", AttributeValue.builder().s(houseId.toString()).build());
+        item.put("role", AttributeValue.builder().s("CONTROLLER").build());
+        item.put("status", AttributeValue.builder().s("PENDING").build());
+        item.put("updatedAt", AttributeValue.builder()
+                .n(String.valueOf(System.currentTimeMillis())).build());
+
+        if (areaId != null) item.put("areaId", AttributeValue.builder().s(areaId.toString()).build());
+        if (areaName != null) item.put("areaName", AttributeValue.builder().s(areaName).build());
+
         try {
-            dynamoDbClient.putItem(r -> r
-                    .tableName(assetMapTable)
-                    .item(Map.of(
-                            "thing", AttributeValue.builder().s(thingName).build(),
-                            "houseId", AttributeValue.builder().s(houseId.toString()).build(),
-                            "role", AttributeValue.builder().s("CONTROLLER").build(),
-                            "status", AttributeValue.builder().s("PENDING").build(),
-                            "updatedAt", AttributeValue.builder()
-                                    .n(String.valueOf(System.currentTimeMillis())).build()
-                    ))
-            );
-            log.info("Synced controller {} to DynamoDB", thingName);
+            dynamoDbClient.putItem(r -> r.tableName(assetMapTable).item(item));
+            log.info("Synced controller {} to DynamoDB areaId={} areaName={}", thingName, areaId, areaName);
         } catch (Exception e) {
             log.error("DynamoDB sync failed for {}: {}", thingName, e.getMessage());
         }
@@ -130,9 +145,11 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     public void activateController(String thingName) {
-        controllerRepository.findByThingName(thingName).ifPresent(ctrl -> {
-            if (ctrl.getStatus() != IotControllerStatus.PENDING) return;
-
+        controllerRepository.findByThingName(thingName).ifPresentOrElse(ctrl -> {
+            if (ctrl.getStatus() == IotControllerStatus.ACTIVE) {
+                log.info("Controller {} already active", thingName);
+                return;
+            }
             ctrl.setStatus(IotControllerStatus.ACTIVE);
             ctrl.setActivatedAt(Instant.now());
             controllerRepository.save(ctrl);
@@ -143,34 +160,63 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .attributeUpdates(Map.of(
                             "status", AttributeValueUpdate.builder()
                                     .value(AttributeValue.builder().s("ACTIVE").build())
-                                    .action(AttributeAction.PUT)
-                                    .build(),
+                                    .action(AttributeAction.PUT).build(),
                             "activatedAt", AttributeValueUpdate.builder()
-                                    .value(AttributeValue.builder().n(
-                                            String.valueOf(System.currentTimeMillis())).build())
-                                    .action(AttributeAction.PUT)
-                                    .build()
+                                    .value(AttributeValue.builder()
+                                            .n(String.valueOf(System.currentTimeMillis())).build())
+                                    .action(AttributeAction.PUT).build()
                     ))
             );
-            log.info("Activated controller {} → DynamoDB synced", thingName);
-        });
+            log.info("Activated controller {}", thingName);
+        }, () -> log.warn("Controller not found: {}", thingName));
     }
 
     @Override
     public void deprovisionController(UUID houseId) {
         controllerRepository.findByHouseId(houseId).ifPresent(ctrl -> {
             try {
-                iotClient.detachThingPrincipal(r -> r.thingName(ctrl.getThingName()).principal(ctrl.getCertificateArn()));
-                iotClient.updateCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).newStatus(CertificateStatus.INACTIVE));
-                iotClient.deleteCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).forceDelete(true));
-                iotClient.deleteThing(r -> r.thingName(ctrl.getThingName()));
-
-                ctrl.setStatus(IotControllerStatus.DEPROVISIONED);
-                controllerRepository.save(ctrl);
-                log.info("Deprovisioned controller {}", ctrl.getThingName());
+                iotClient.listThingPrincipals(r -> r.thingName(ctrl.getThingName()))
+                        .principals()
+                        .forEach(principal -> {
+                            try {
+                                iotClient.detachThingPrincipal(r -> r.thingName(ctrl.getThingName()).principal(principal));
+                                log.info("Detached principal {} from {}", principal, ctrl.getThingName());
+                            } catch (Exception e) {
+                                log.warn("detachThingPrincipal skipped: {}", e.getMessage());
+                            }
+                        });
             } catch (Exception e) {
-                log.error("Deprovision failed: {}", ctrl.getThingName(), e);
+                log.warn("listThingPrincipals skipped: {}", e.getMessage());
             }
+
+            try {
+                iotClient.updateCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).newStatus(CertificateStatus.INACTIVE));
+            } catch (Exception e) {
+                log.warn("updateCertificate skipped: {}", e.getMessage());
+            }
+
+            try {
+                iotClient.deleteCertificate(r -> r.certificateId(extractCertId(ctrl.getCertificateArn())).forceDelete(true));
+            } catch (Exception e) {
+                log.warn("deleteCertificate skipped: {}", e.getMessage());
+            }
+
+            try {
+                iotClient.deleteThing(r -> r.thingName(ctrl.getThingName()));
+            } catch (Exception e) {
+                log.warn("deleteThing skipped: {}", e.getMessage());
+            }
+
+            ctrl.setStatus(IotControllerStatus.DEPROVISIONED);
+            controllerRepository.save(ctrl);
+
+            try {
+                dynamoDbClient.deleteItem(r -> r.tableName(assetMapTable).key(Map.of("thing", AttributeValue.builder().s(ctrl.getThingName()).build())));
+            } catch (Exception e) {
+                log.warn("DynamoDB deleteItem skipped: {}", e.getMessage());
+            }
+
+            log.info("Deprovisioned controller {}", ctrl.getThingName());
         });
     }
 
@@ -186,17 +232,20 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                 .orElseThrow(() -> new NotFoundException("IoT device not found: " + thing));
 
         AssetItem asset = device.getAssetItem();
+        UUID houseId = asset.getHouseId();
         asset.setFunctionAreaId(areaId);
         assetItemRepository.save(asset);
 
-        ioTDeviceService.upsetToDynamoDB(device);
+        String areaName = getAreaName(houseId, areaId);
 
-        log.info("Assigned node {} to area {}", thing, areaId);
+        ioTDeviceService.upsetToDynamoDB(device, areaName);
+
+        log.info("Assigned node {} to area {} ({})", thing, areaId, areaName);
     }
 
     @Override
     @Transactional
-    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token) {
+    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token, UUID areaId) {
         if (!iotNodeTokenService.isTokenValid(serial, token)) {
             log.warn("Invalid token for serial={}", serial);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
@@ -207,19 +256,20 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         });
 
         IotController controller = controllerRepository.findByHouseId(houseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "No controller found for house " + houseId + ". Provision controller first."));
-
-        if (controller.getStatus() != IotControllerStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Controller not activated yet. Wait for controller to connect.");
-        }
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "No controller found for house " + houseId +
+                                ". Please provision controller first."));
 
         AssetCategory category = assetCategoryRepository.findByCode("IOT_NODE")
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "AssetCategory IOT_NODE not found. Contact admin."));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "AssetCategory IOT_NODE not found. Contact admin."));
 
         try {
             AssetItem assetItem = AssetItem.builder()
                     .houseId(houseId)
-                    .functionAreaId(null)
+                    .functionAreaId(areaId)
                     .category(category)
                     .displayName("Node " + serial.substring(Math.max(0, serial.length() - 8)))
                     .serialNumber(serial)
@@ -235,7 +285,9 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .build();
             IoTDevice savedDevice = ioTDeviceRepository.save(device);
 
-            ioTDeviceService.upsetToDynamoDB(savedDevice);
+            String areaName = getAreaName(houseId, areaId);
+
+            ioTDeviceService.upsetToDynamoDB(savedDevice, areaName);
 
             iotNodeTokenService.revokeToken(serial);
 
@@ -254,7 +306,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         } catch (Exception e) {
             log.error("provisionNode failed serial={} houseId={}", serial, houseId, e);
             throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Node provision failed: " + e.getMessage());
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Node provision failed: " + e.getMessage());
         }
     }
 
@@ -267,12 +320,181 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         device.setCapabilities(capabilities);
         ioTDeviceRepository.save(device);
 
-        ioTDeviceService.upsetToDynamoDB(device);
+        UUID houseId = device.getAssetItem().getHouseId();
+        UUID areaId = device.getAssetItem().getFunctionAreaId();
+        String areaName = getAreaName(houseId, areaId);
+
+        ioTDeviceService.upsetToDynamoDB(device, areaName);
 
         log.info("Updated capabilities thing={} caps={}", thing, capabilities);
     }
 
+    @Override
+    public PagedResponse<AlertDto> getAlerts(UUID houseId, int limit, String cursor, String date, Severity level) {
+        try {
+            String dateStr = (date != null && !date.isBlank())
+                    ? date
+                    : LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).toString();
+
+            String pk = houseId + "#" + dateStr;
+
+            Map<String, AttributeValue> exprValues = new HashMap<>();
+            exprValues.put(":pk", AttributeValue.builder().s(pk).build());
+
+            String filterExpr = null;
+            Map<String, String> exprNames = null;
+            if (level != null) {
+                filterExpr = "#lv = :lv";
+                exprNames = Map.of("#lv", "level");
+                exprValues.put(":lv", AttributeValue.builder().s(level.toString().toUpperCase()).build());
+            }
+
+            QueryRequest.Builder queRequest = QueryRequest.builder()
+                    .tableName(alertsTable)
+                    .indexName("house-date-ts-index")
+                    .keyConditionExpression("houseDatePartition = :pk")
+                    .expressionAttributeValues(exprValues)
+                    .scanIndexForward(false)
+                    .limit(limit);
+
+            if (filterExpr != null) {
+                queRequest.filterExpression(filterExpr);
+            }
+
+            if (exprNames != null) {
+                queRequest.expressionAttributeNames(exprNames);
+            }
+
+            if (cursor != null && !cursor.isBlank()) {
+                Map<String, AttributeValue> startKey = decodeCursor(cursor);
+                if (!startKey.isEmpty()) {
+                    queRequest.exclusiveStartKey(startKey);
+                }
+            }
+
+            QueryResponse queResponse = dynamoDbClient.query(queRequest.build());
+
+            List<AlertDto> items = queResponse.items().stream().map(this::mapToAlertDto).toList();
+
+            String nextCursor = null;
+            if (queResponse.lastEvaluatedKey() != null && !queResponse.lastEvaluatedKey().isEmpty()) {
+                nextCursor = encodeCursor(queResponse.lastEvaluatedKey());
+            }
+
+            log.info("getAlerts: houseId={} date={} level={} count={} hasMore={}", houseId, dateStr, level, items.size(), nextCursor != null);
+
+            return PagedResponse.<AlertDto>builder()
+                    .items(items)
+                    .nextCursor(nextCursor)
+                    .hasMore(nextCursor != null)
+                    .build();
+        } catch (Exception e) {
+            log.error("getAlerts failed houseId={}", houseId, e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to get alerts");
+        }
+    }
+
     private String extractCertId(String arn) {
         return arn.substring(arn.lastIndexOf("/") + 1);
+    }
+
+    private String getAreaName(UUID houseId, UUID areaId) {
+        if (areaId == null) return null;
+        try {
+            var house = houseGrpc.getHouseById(houseId);
+            return house.getFunctionalAreasList().stream()
+                    .filter(a -> a.getId().equals(areaId.toString()))
+                    .map(FunctionalAreaResponse::getName)
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("Failed to get areaName houseId={} areaId={}: {}", houseId, areaId, e.getMessage());
+            return null;
+        }
+    }
+
+    private Map<String, AttributeValue> decodeCursor(String cursor) {
+        try {
+            byte[] bytes = Base64.getUrlDecoder().decode(cursor);
+            String json = new String(bytes, StandardCharsets.UTF_8);
+            JsonNode root = objectMapper.readTree(json);
+            Map<String, AttributeValue> result = new HashMap<>();
+            root.properties().forEach(entry -> {
+                JsonNode value = entry.getValue();
+                if (value.has("S")) {
+                    result.put(entry.getKey(), AttributeValue.builder().s(value.get("S").asString()).build());
+                } else if (value.has(("N"))) {
+                    result.put(entry.getKey(), AttributeValue.builder().n(value.get("N").asString()).build());
+                }
+            });
+
+            return result;
+        } catch (Exception e) {
+            log.warn("decodeCursor failed: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private AlertDto mapToAlertDto(Map<String, AttributeValue> item) {
+        return AlertDto.builder()
+                .alertId(str(item, "alertId"))
+                .houseId(str(item, "houseId"))
+                .areaId(str(item, "areaId"))
+                .areaName(str(item, "areaName"))
+                .thing(str(item, "thing"))
+                .alertType(str(item, "alertType"))
+                .title(str(item, "title"))
+                .detail(str(item, "detail"))
+                .metric(str(item, "metric"))
+                .value(num(item, "value"))
+                .level(str(item, "level"))
+                .resolved(item.containsKey("resolved") && Boolean.TRUE.equals(item.get("resolved").bool()))
+                .ts(numLong(item, "ts"))
+                .date(str(item, "date"))
+                .build();
+    }
+
+    private String encodeCursor(Map<String, AttributeValue> lastKey) {
+        try {
+            Map<String, Map<String, String>> simple = new HashMap<>();
+            lastKey.forEach((k, v) -> {
+                Map<String, String> typeVal = new HashMap<>();
+                if (v.s() != null) typeVal.put("S", v.s());
+                else if (v.n() != null) typeVal.put("N", v.n());
+                simple.put(k, typeVal);
+            });
+
+            String json = objectMapper.writeValueAsString(simple);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            log.warn("encodeCursor failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String str(Map<String, AttributeValue> item, String key) {
+        AttributeValue v = item.get(key);
+        return (v != null && v.s() != null) ? v.s() : null;
+    }
+
+    private Double num(Map<String, AttributeValue> item, String key) {
+        AttributeValue v = item.get(key);
+        if (v == null || v.n() == null) return null;
+        try {
+            return Double.parseDouble(v.n());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Long numLong(Map<String, AttributeValue> item, String key) {
+        AttributeValue v = item.get(key);
+        if (v == null || v.n() == null) return null;
+        try {
+            return Long.parseLong(v.n());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }
