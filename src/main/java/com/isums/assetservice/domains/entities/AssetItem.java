@@ -40,9 +40,6 @@ public class AssetItem {
     @Column(name = "serial_number", columnDefinition = "text")
     private String serialNumber;
 
-    @Column(name = "nfc_id")
-    private String nfcId;
-
     @Column(name = "condition_percent")
     private int conditionPercent;
 

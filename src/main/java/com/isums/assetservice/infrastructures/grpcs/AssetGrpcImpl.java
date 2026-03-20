@@ -1,10 +1,9 @@
 package com.isums.assetservice.infrastructures.grpcs;
 
-import com.isums.assetservice.grpc.AssetServiceGrpc;
+import com.isums.assetservice.grpc.*;
 import com.isums.assetservice.infrastructures.mapper.AssetGrpcMapper;
-import com.isums.assetservice.grpc.GetAssetItemsByHouseIdRequest;
-import com.isums.assetservice.grpc.GetAssetItemsResponse;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
+import com.isums.assetservice.services.IotThresholdService;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -56,12 +55,12 @@ public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
             responseObserver.onCompleted();
 
         } catch (DataAccessException dae) {
-            log.error("DB error in getAssetItemsByHouseId", dae); // ← thêm log
+            log.error("DB error in getAssetItemsByHouseId", dae);
             responseObserver.onError(
                     Status.UNAVAILABLE.withDescription("Database unavailable").withCause(dae).asRuntimeException()
             );
         } catch (Exception ex) {
-            log.error("Unexpected error in getAssetItemsByHouseId", ex); // ← thêm log
+            log.error("Unexpected error in getAssetItemsByHouseId", ex);
             responseObserver.onError(
                     Status.INTERNAL.withDescription("Internal server error").withCause(ex).asRuntimeException()
             );

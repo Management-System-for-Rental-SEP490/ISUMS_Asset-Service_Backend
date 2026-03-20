@@ -10,8 +10,9 @@ import org.springframework.grpc.client.GrpcChannelFactory;
 public class GrpcClientsConfig {
 
     @Bean
-    HouseServiceGrpc.HouseServiceBlockingStub houseStub(GrpcChannelFactory channels) {
-        return HouseServiceGrpc.newBlockingStub(channels.createChannel("house"));
+    HouseServiceGrpc.HouseServiceBlockingStub houseStub(GrpcChannelFactory channels, GrpcTokenInterceptor tokenInterceptor) {
+        return HouseServiceGrpc.newBlockingStub(channels.createChannel("house"))
+                .withInterceptors(tokenInterceptor);
     }
 
     @Bean

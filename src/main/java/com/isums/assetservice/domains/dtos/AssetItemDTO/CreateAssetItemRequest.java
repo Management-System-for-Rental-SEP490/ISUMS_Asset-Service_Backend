@@ -6,12 +6,11 @@ import java.util.UUID;
 
 public record CreateAssetItemRequest (
      UUID houseId,
+     UUID functionalId,
      UUID categoryId,
      String displayName,
      String serialNumber,
-     String nfcId,
      int conditionPercent,
-     AssetStatus status,
-     Boolean isIoTDevice
+     AssetStatus status
 ){
 }

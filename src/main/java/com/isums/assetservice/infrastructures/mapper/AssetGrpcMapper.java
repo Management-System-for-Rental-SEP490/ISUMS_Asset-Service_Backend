@@ -7,7 +7,10 @@ import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
-import com.isums.contractservice.grpc.*;
+import com.isums.assetservice.grpc.AssetCategoryDto;
+import com.isums.assetservice.grpc.AssetEventDto;
+import com.isums.assetservice.grpc.AssetItemDto;
+import com.isums.assetservice.grpc.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +30,6 @@ public final class AssetGrpcMapper {
                 .setHouseId(uuid(item.getHouseId()))
                 .setDisplayName(str(item.getDisplayName()))
                 .setSerialNumber(str(item.getSerialNumber()))
-                .setNfcId(str(item.getNfcId()))
                 .setConditionPercent(item.getConditionPercent())
                 .setStatus(mapStatus(item.getStatus()));
 
@@ -78,13 +80,14 @@ public final class AssetGrpcMapper {
                 .build();
     }
 
-    private com.isums.contractservice.grpc.AssetStatus mapStatus(AssetStatus s) {
+    private com.isums.assetservice.grpc.AssetStatus mapStatus(AssetStatus s) {
 
         if (s == null) {
-            return com.isums.contractservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
+            return com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
         }
 
         return switch (s) {
+
             case AVAILABLE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
             case IN_USE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
             case ACTIVE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
@@ -94,10 +97,10 @@ public final class AssetGrpcMapper {
         };
     }
 
-    private com.isums.contractservice.grpc.AssetEventType mapEventType(AssetEventType t) {
+    private com.isums.assetservice.grpc.AssetEventType mapEventType(AssetEventType t) {
 
         if (t == null) {
-            return com.isums.contractservice.grpc.AssetEventType.ASSET_EVENT_TYPE_UNSPECIFIED;
+            return com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_UNSPECIFIED;
         }
 
         return switch (t) {

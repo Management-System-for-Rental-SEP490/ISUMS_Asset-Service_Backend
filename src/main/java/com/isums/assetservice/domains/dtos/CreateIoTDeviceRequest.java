@@ -7,6 +7,7 @@ import java.util.UUID;
 public record CreateIoTDeviceRequest(
         String thing,
         String serialNumber,
-        AssetItem assetItem
+        AssetItem assetItem,
+        String areaName
 ) {
 }

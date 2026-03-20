@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/asset/events")
+@RequestMapping("/api/assets/events")
 @RequiredArgsConstructor
 public class AssetEventController {
     private final AssetEventService assetEventService;
