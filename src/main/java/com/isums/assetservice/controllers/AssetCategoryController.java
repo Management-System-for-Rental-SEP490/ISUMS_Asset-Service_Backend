@@ -25,6 +25,12 @@ public class AssetCategoryController {
         return ApiResponses.ok(response,"Get all categories successfully");
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<AssetCategoryDto> GetAssetCategoryById(@PathVariable UUID id){
+        AssetCategoryDto response = assetCategoryService.getById(id);
+        return ApiResponses.ok(response,"Get  category by id successfully");
+    }
+
     @PostMapping
     public ApiResponse<AssetCategoryDto> CreateAssetCategory(@RequestBody CreateAssetCategoryRequest request){
         AssetCategoryDto response = assetCategoryService.createAssetCategory(request);
