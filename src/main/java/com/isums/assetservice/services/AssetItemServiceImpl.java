@@ -45,7 +45,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             AssetItem assetItem = AssetItem.builder()
                     .houseId(request.houseId())
-                    .functionAreaId(request.functionalId())
+                    .functionAreaId(request.functionAreaId())
                     .category(assetCategory)
                     .displayName((request.displayName()))
                     .serialNumber((request.serialNumber()))
@@ -103,6 +103,10 @@ public class AssetItemServiceImpl implements AssetItemService {
             if (request.conditionPercent() != null) {
                 if (request.conditionPercent() < 0 || request.conditionPercent() > 100) {
                     throw new RuntimeException("condition must be in 0-100");                }
+            }
+
+            if(request.functionAreaId() != null){
+                assetItem.setFunctionAreaId((request.functionAreaId()));
             }
 
             if (request.displayName() != null)

@@ -16,6 +16,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class AssetItemDto {
     private UUID id;
+    private UUID functionAreaId;
     private UUID houseId;
     private UUID categoryId;
     private String displayName;
