@@ -46,6 +46,19 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
     }
 
     @Override
+    public AssetCategoryDto getById(UUID id) {
+        try{
+            AssetCategory categories = categoryRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Id not found"));
+
+            return assetMapper.mapAssetCategory(categories);
+
+        } catch (Exception ex) {
+            throw new RuntimeException("Can't get categories by id" + ex.getMessage());
+        }
+    }
+
+    @Override
     public AssetCategoryDto updateAssetCategory(UUID id, UpdateAssetCategoryRequest request) {
         try {
             AssetCategory assetCategory = categoryRepository.findById(id)

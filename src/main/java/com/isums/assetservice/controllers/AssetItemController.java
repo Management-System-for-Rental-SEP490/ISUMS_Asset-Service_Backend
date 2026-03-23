@@ -36,14 +36,14 @@ public class AssetItemController {
     @PutMapping("/{id}")
     public ApiResponse<AssetItemDto> UpdateAssetItem(@PathVariable UUID id, @RequestBody UpdateAssetItemRequest request) {
         AssetItemDto response = assetItemService.UpdateAssetItem(id, request);
-        return ApiResponses.ok(response,"Get all asset-images successfully");
+        return ApiResponses.ok(response,"Update asset item successfully");
 
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Boolean> DeleteAssetItem(@PathVariable UUID id) {
         Boolean response = assetItemService.deleteAssetItem(id);
-        return ApiResponses.ok(response,"Get all asset-images successfully");
+        return ApiResponses.ok(response,"Delete  asset items successfully");
 
     }
 
