@@ -64,8 +64,7 @@ public final class AssetGrpcMapper {
     private AssetImageDto toImageDto(AssetImage img) {
         return AssetImageDto.newBuilder()
                 .setId(uuid(img.getId()))
-                .setImageUrl(str(img.getImageUrl()))
-                .setNote(str(img.getNote()))
+                .setImageUrl(str(img.getKey()))
                 .setCreatedAt(ts(img.getCreatedAt()))
                 .build();
     }

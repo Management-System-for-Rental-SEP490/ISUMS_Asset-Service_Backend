@@ -1,26 +1,24 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
-import com.isums.assetservice.domains.entities.AssetEvent;
-import com.isums.assetservice.domains.entities.AssetTag;
+import com.isums.assetservice.domains.entities.*;
 import com.isums.assetservice.domains.enums.AssetEventType;
+import com.isums.assetservice.exceptions.NotFoundException;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
-import com.isums.assetservice.domains.entities.AssetCategory;
-import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
-import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetTagRepository;
+import com.isums.assetservice.infrastructures.repositories.*;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.*;
@@ -35,6 +33,8 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetMapper assetMapper;
     private final AssetItemRepository assetItemRepository;
     private final AssetTagRepository assetTagRepository;
+    private final S3ServiceImpl s3;
+    private final AssetImageRepository assetImageRepository;
 
     @Override
     public AssetItemDto CreateAssetItem(CreateAssetItemRequest request) {
@@ -225,6 +225,50 @@ public class AssetItemServiceImpl implements AssetItemService {
         asset.setConditionPercent(conditionScore);
 
         assetItemRepository.save(asset);
+    }
+
+    @Override
+    @Transactional
+    public void uploadAssetImages(UUID assetId, List<MultipartFile> files) {
+        boolean isExist = assetItemRepository.existsById(assetId);
+        if(!isExist){
+            throw new NotFoundException("Asset not found :  " + assetId);
+        }
+
+        AssetItem item = assetItemRepository.getReferenceById(assetId);
+
+        files.forEach(file -> {
+            String key = s3.upload(file,"asset/" + assetId);
+
+            AssetImage image = AssetImage.builder()
+                    .assetItem(item)
+                    .key(key)
+                    .build();
+
+            assetImageRepository.save(image);
+        });
+    }
+
+    @Override
+    @Cacheable(value = "assetImages", key = "#assetId")
+    public List<AssetImageDto> getAssetImages(UUID assetId) {
+        List<AssetImage> images = assetImageRepository.findByAssetItemId(assetId);
+
+        List<AssetImageDto> imageDto = new ArrayList<>();
+        images.forEach(image ->{
+            String url = s3.getImageUrl(image.getKey());
+            imageDto.add(new AssetImageDto(image.getId(),url,image.getCreatedAt()));
+        });
+
+        return imageDto;
+    }
+
+    @Override
+    public void deleteAssetImage(UUID assetId, UUID imageId) {
+        AssetImage image = assetImageRepository.findById(imageId)
+                .orElseThrow(() -> new NotFoundException("House image not found"));
+        s3.delete(image.getKey());
+        assetImageRepository.delete(image);
     }
 
 }

@@ -1,6 +1,7 @@
 package com.isums.assetservice.controllers;
 
 import com.isums.assetservice.domains.dtos.ApiResponses;
+import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
@@ -8,9 +9,11 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -64,5 +67,23 @@ public class AssetItemController {
                                                          @AuthenticationPrincipal Jwt jwt){
         UUID userId = UUID.fromString(jwt.getSubject());
         return ApiResponses.ok(assetItemService.updateHouseForAsset(id,request,userId),"Update new house for asset-item successfully");
+    }
+
+    @PostMapping(value = "/{assetId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<AssetItemDto> uploadAssetImages(@PathVariable UUID assetId, @RequestParam("files") List<MultipartFile> files) {
+        assetItemService.uploadAssetImages(assetId, files);
+        return ApiResponses.ok(null, "Upload images successfully");
+    }
+
+    @GetMapping("{assetId}/images")
+    public ApiResponse<List<AssetImageDto>> getAssetImages(@PathVariable UUID assetId) {
+        List<AssetImageDto> images = assetItemService.getAssetImages(assetId);
+        return ApiResponses.ok(images, "Get images successfully");
+    }
+
+    @DeleteMapping("{assetId}/image/{imageId}")
+    public ApiResponse<Void> deleteHouseImage(@PathVariable UUID assetId, @PathVariable UUID imageId) {
+        assetItemService.deleteAssetImage(assetId, imageId);
+        return ApiResponses.ok(null, "Delete image successfully");
     }
 }
