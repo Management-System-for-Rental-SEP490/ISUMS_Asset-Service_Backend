@@ -6,11 +6,11 @@ import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetImageDTO.CreateAssetImageRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@RestController
 @RequestMapping("/api/assets/images")
 @RequiredArgsConstructor
 public class AssetImageController {
