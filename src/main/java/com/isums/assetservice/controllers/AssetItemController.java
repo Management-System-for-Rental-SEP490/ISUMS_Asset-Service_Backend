@@ -82,7 +82,7 @@ public class AssetItemController {
     }
 
     @DeleteMapping("{assetId}/image/{imageId}")
-    public ApiResponse<Void> deleteHouseImage(@PathVariable UUID assetId, @PathVariable UUID imageId) {
+    public ApiResponse<Void> deleteAssetImage(@PathVariable UUID assetId, @PathVariable UUID imageId) {
         assetItemService.deleteAssetImage(assetId, imageId);
         return ApiResponses.ok(null, "Delete image successfully");
     }

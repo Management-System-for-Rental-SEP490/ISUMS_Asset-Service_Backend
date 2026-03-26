@@ -2,15 +2,17 @@ package com.isums.assetservice.domains.dtos.AssetItemDTO;
 
 import com.isums.assetservice.domains.enums.AssetStatus;
 
+import java.util.List;
 import java.util.UUID;
 
 public record CreateAssetItemRequest (
-     UUID houseId,
-     UUID functionAreaId,
-     UUID categoryId,
-     String displayName,
-     String serialNumber,
-     int conditionPercent,
-     AssetStatus status
+        UUID houseId,
+        UUID functionAreaId,
+        UUID categoryId,
+        String displayName,
+        String serialNumber,
+        int conditionPercent,
+        AssetStatus status,
+        List<String> assetImages
 ){
 }
