@@ -250,7 +250,6 @@ public class AssetItemServiceImpl implements AssetItemService {
     }
 
     @Override
-    @Cacheable(value = "assetImages", key = "#assetId")
     public List<AssetImageDto> getAssetImages(UUID assetId) {
         List<AssetImage> images = assetImageRepository.findByAssetItemId(assetId);
 
