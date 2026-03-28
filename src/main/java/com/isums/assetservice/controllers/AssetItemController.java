@@ -1,13 +1,13 @@
 package com.isums.assetservice.controllers;
 
-import com.isums.assetservice.domains.dtos.ApiResponses;
-import com.isums.assetservice.domains.dtos.AssetImageDto;
+import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
-import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
+import com.isums.assetservice.infrastructures.grpcs.GrpcUserClient;
+import com.isums.userservice.grpc.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AssetItemController {
     private final AssetItemService assetItemService;
+    private final GrpcUserClient grpcUserClient;
 
     @GetMapping
     public ApiResponse<List<AssetItemDto>> GetAllAssetItems() {
@@ -85,5 +86,12 @@ public class AssetItemController {
     public ApiResponse<Void> deleteAssetImage(@PathVariable UUID assetId, @PathVariable UUID imageId) {
         assetItemService.deleteAssetImage(assetId, imageId);
         return ApiResponses.ok(null, "Delete image successfully");
+    }
+
+    @PutMapping("/maintenance/batch")
+    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request) {
+        UserResponse user = grpcUserClient.getUserIdAndRoleByKeyCloakId(jwt.getSubject());
+        BatchUpdateResponse res = assetItemService.batchUpdateAssetCondition(UUID.fromString(user.getId()),request);
+        return ApiResponses.ok(res, "Batch update asset successfully");
     }
 }

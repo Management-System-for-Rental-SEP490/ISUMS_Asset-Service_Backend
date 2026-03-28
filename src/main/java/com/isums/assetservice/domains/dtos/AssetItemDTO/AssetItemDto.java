@@ -7,7 +7,9 @@ import com.isums.assetservice.domains.enums.AssetStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +25,8 @@ public class AssetItemDto {
     private String serialNumber;
     private int conditionPercent;
     private AssetStatus status;
+    private String note;
+    private Instant updateAt;
     private String nfcTag;
     private String qrTag;
 //    private List<AssetImageDto> images;
