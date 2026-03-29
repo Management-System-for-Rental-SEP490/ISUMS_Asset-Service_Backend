@@ -80,4 +80,16 @@ public class AssetEventServiceImpl implements AssetEventService {
             throw new RuntimeException("Error to get asset item: " + ex.getMessage());
         }
     }
+
+    @Override
+    public List<AssetEventDto> getEventsByJob(UUID jobId) {
+        try {
+
+            List<AssetEvent> events = assetEventRepository.findByJobId(jobId);
+
+                return assetMapper.maAssetEvents(events);
+        } catch (Exception ex) {
+            throw new RuntimeException("Cannot get events by job: " + ex.getMessage());
+        }
+    }
 }

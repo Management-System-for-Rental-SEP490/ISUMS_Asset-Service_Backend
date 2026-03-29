@@ -36,4 +36,11 @@ public class AssetEventController {
         AssetEventDto response = assetEventService.updateEventStatus(id,request);
         return ApiResponses.ok(response,"Update status successfully");
     }
+
+    @GetMapping("/job/{jobId}")
+    public ApiResponse<List<AssetEventDto>> getEventsByJob(@PathVariable UUID jobId) {
+        List<AssetEventDto> res = assetEventService.getEventsByJob(jobId);
+
+        return ApiResponses.ok(res, "Get asset events by job successfully");
+    }
 }

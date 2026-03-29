@@ -290,6 +290,10 @@ public class AssetItemServiceImpl implements AssetItemService {
             Map<UUID, BatchUpdateAssetRequest.AssetUpdateItem> map = request.updates().stream()
                     .collect(Collectors.toMap(BatchUpdateAssetRequest.AssetUpdateItem::assetId, a -> a));
 
+            UUID jobId = request.jobId();
+            if (request.jobId() == null) {
+                throw new RuntimeException("jobId is required");
+            }
             for (AssetItem asset : assets) {
 
                 BatchUpdateAssetRequest.AssetUpdateItem update = map.get(asset.getId());
@@ -305,23 +309,14 @@ public class AssetItemServiceImpl implements AssetItemService {
                     asset.setNote(update.note());
                 }
 
-                asset.getImages().clear();
-                if (update.assetImages() != null) {
-                    update.assetImages().forEach(url -> {
-                        asset.getImages().add(
-                                AssetImage.builder()
-                                        .key(url)
-                                        .assetItem(asset)
-                                        .build()
-                        );
-                    });
-                }
+
 
                 asset.getEvents().add(AssetEvent.builder()
                                 .eventType(AssetEventType.MAINTENANCE)
-                                .description("Batch update condition: " + update.conditionPercent())
+                                .description("Updated condition to " + update.conditionPercent() + ", note: " + update.note())
                                 .createdAt(Instant.now())
                                 .createBy(staffId)
+                                .jobId(jobId)
                                 .assetItem(asset)
                                 .build()
                 );

@@ -15,5 +15,6 @@ public interface AssetEventService {
     AssetEventDto createEvent(CreateAssetEventRequest request);
     List<AssetEventDto> getAllAssetEvents();
     AssetEventDto updateEventStatus(UUID id, UpdateAssetEventRequest request);
+    List<AssetEventDto> getEventsByJob(UUID jobId);
 
 }
