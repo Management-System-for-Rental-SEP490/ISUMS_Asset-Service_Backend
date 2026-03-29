@@ -2,6 +2,8 @@ package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
+import com.isums.assetservice.domains.dtos.BatchUpdateAssetRequest;
+import com.isums.assetservice.domains.dtos.BatchUpdateResponse;
 import com.isums.assetservice.domains.entities.*;
 import com.isums.assetservice.domains.enums.AssetEventType;
 import com.isums.assetservice.exceptions.NotFoundException;
@@ -268,6 +270,69 @@ public class AssetItemServiceImpl implements AssetItemService {
                 .orElseThrow(() -> new NotFoundException("House image not found"));
         s3.delete(image.getKey());
         assetImageRepository.delete(image);
+    }
+
+    @Override
+    @Transactional
+    public BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request) {
+        try {
+
+            List<UUID> ids = request.updates().stream()
+                    .map(BatchUpdateAssetRequest.AssetUpdateItem::assetId)
+                    .toList();
+
+            List<AssetItem> assets = assetItemRepository.findAllById(ids);
+
+            if (assets.size() != ids.size()) {
+                throw new RuntimeException("Some assets not found");
+            }
+
+            Map<UUID, BatchUpdateAssetRequest.AssetUpdateItem> map = request.updates().stream()
+                    .collect(Collectors.toMap(BatchUpdateAssetRequest.AssetUpdateItem::assetId, a -> a));
+
+            UUID jobId = request.jobId();
+            if (request.jobId() == null) {
+                throw new RuntimeException("jobId is required");
+            }
+            for (AssetItem asset : assets) {
+
+                BatchUpdateAssetRequest.AssetUpdateItem update = map.get(asset.getId());
+
+                if (update.conditionPercent() != null) {
+                    if (update.conditionPercent() < 0 || update.conditionPercent() > 100) {
+                        throw new RuntimeException("condition must be 0-100");
+                    }
+                    asset.setConditionPercent(update.conditionPercent());
+                }
+
+                if (update.note() != null) {
+                    asset.setNote(update.note());
+                }
+
+
+
+                asset.getEvents().add(AssetEvent.builder()
+                                .eventType(AssetEventType.MAINTENANCE)
+                                .description("Updated condition to " + update.conditionPercent() + ", note: " + update.note())
+                                .createdAt(Instant.now())
+                                .createBy(staffId)
+                                .jobId(jobId)
+                                .assetItem(asset)
+                                .build()
+                );
+            }
+
+            List<AssetItem> saved = assetItemRepository.saveAll(assets);
+
+            return new BatchUpdateResponse(
+                    request.updates().size(),
+                    saved.size(),
+                    assetMapper.mapAssetItems(saved)
+            );
+
+        } catch (Exception ex) {
+            throw new RuntimeException("Error batch update asset: " + ex.getMessage());
+        }
     }
 
 }
