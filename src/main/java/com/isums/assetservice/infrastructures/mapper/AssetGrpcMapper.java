@@ -111,6 +111,7 @@ public final class AssetGrpcMapper {
             case REPLACED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPLACED;
             case DISPOSED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DISPOSED;
             case TRANSFERRED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_TRANSFERRED;
+            case MAINTENANCE -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_MAINTENANCE;
         };
     }
 
