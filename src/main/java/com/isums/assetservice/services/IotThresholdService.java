@@ -34,13 +34,15 @@ public class IotThresholdService {
 
     public void seedDefaults(UUID houseId) {
         List<IotThreshold> defaults = List.of(
-                build(houseId, null, "voltage",   180.0, 260.0, "WARNING"),
-                build(houseId, null, "current",   null,  20.0,  "WARNING"),
-                build(houseId, null, "power",     null,  5000.0,"WARNING"),
-                build(houseId, null, "frequency", 49.0,  51.0,  "WARNING"),
-                build(houseId, null, "w_lpm",     null,  50.0,  "CRITICAL"),
-                build(houseId, null, "d_w_tot",   null,  100.0, "WARNING"),
-                build(houseId, null, "gas_ppm",   null,  300.0, "CRITICAL")
+                build(houseId, null, "voltage", 180.0, 260.0, "WARNING"),
+                build(houseId, null, "current", null, 20.0, "WARNING"),
+                build(houseId, null, "power", null, 5000.0, "WARNING"),
+                build(houseId, null, "frequency", 49.0, 51.0, "WARNING"),
+                build(houseId, null, "w_lpm", null, 50.0, "CRITICAL"),
+                build(houseId, null, "d_w_tot", null, 100.0, "WARNING"),
+                build(houseId, null, "gas_ppm", null, 300.0, "CRITICAL"),
+                build(houseId, null, "temperature", null, 45.0, "WARNING"),
+                build(houseId, null, "humidity", null, 90.0, "INFO")
         );
 
         defaults.stream()

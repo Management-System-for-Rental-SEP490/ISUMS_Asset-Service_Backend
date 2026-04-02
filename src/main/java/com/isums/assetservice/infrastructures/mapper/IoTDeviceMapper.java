@@ -7,6 +7,7 @@ import org.mapstruct.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Mapper(componentModel = "spring")
 public interface IoTDeviceMapper {
@@ -15,22 +16,24 @@ public interface IoTDeviceMapper {
 
     List<IoTDeviceDto> toIoTDeviceDtoList(List<IoTDevice> iotDevices);
 
-
     @Mapping(source = "assetItem.id", target = "assetId")
     @Mapping(source = "assetItem.displayName", target = "displayName")
     @Mapping(source = "assetItem.category.code", target = "categoryCode")
     @Mapping(source = "assetItem.status", target = "status")
-    @Mapping(target = "areaName", ignore = true)
-    IoTDeviceMapControllerDto toIoTDeviceMapControllerDto(IoTDevice iotDevice, @Context Map<String, String> areaNameMap);
+    @Mapping(source = "assetItem.functionAreaId", target = "areaName", qualifiedByName = "mapAreaName")
+    IoTDeviceMapControllerDto toIoTDeviceMapControllerDto(
+            IoTDevice iotDevice,
+            @Context Map<String, String> areaNameMap
+    );
 
-    List<IoTDeviceMapControllerDto> toIoTDeviceMapControllerDtoList(List<IoTDevice> iotDevices, @Context Map<String, String> areaNameMap);
+    List<IoTDeviceMapControllerDto> toIoTDeviceMapControllerDtoList(
+            List<IoTDevice> iotDevices,
+            @Context Map<String, String> areaNameMap
+    );
 
-    @AfterMapping
-    default void setAreaName(IoTDevice device, @MappingTarget IoTDeviceMapControllerDto.IoTDeviceMapControllerDtoBuilder dto,
-                             @Context Map<String, String> areaNameMap) {
-        if (device.getAssetItem() != null && device.getAssetItem().getFunctionAreaId() != null) {
-            String areaName = areaNameMap.get(device.getAssetItem().getFunctionAreaId().toString());
-            dto.areaName(areaName);
-        }
+    @Named("mapAreaName")
+    default String mapAreaName(UUID functionAreaId, @Context Map<String, String> areaNameMap) {
+        if (functionAreaId == null) return null;
+        return areaNameMap.get(functionAreaId.toString());
     }
 }
