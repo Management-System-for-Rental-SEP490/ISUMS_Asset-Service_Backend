@@ -18,5 +18,8 @@ public record ForecastScopeDto(
         String trend,
         int trainingRows,
         List<ForecastDailyPoint> dailyForecast,
-        long forecastedAt
+        long forecastedAt,
+        String status,
+        String reason,
+        String method
 ) {}
