@@ -10,6 +10,7 @@ import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.Duration;
+import java.util.List;
 
 @Configuration
 @EnableCaching
@@ -28,7 +29,8 @@ public class RedisConfig {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager();
-        manager.setCacheSpecification("iotForecast=maximumSize=500,expireAfterWrite=30m");
+        manager.setCacheSpecification("maximumSize=500,expireAfterWrite=30m");
+        manager.setCacheNames(List.of("iotForecast", "allIoT", "houseInformation", "allHouses"));
         return manager;
     }
 }
