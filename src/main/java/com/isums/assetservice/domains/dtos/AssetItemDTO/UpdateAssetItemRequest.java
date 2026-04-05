@@ -10,6 +10,7 @@ public record UpdateAssetItemRequest(
         String serialNumber,
         String nfcId,
         Integer conditionPercent,
+        String note,
         AssetStatus status
 ) {}
 

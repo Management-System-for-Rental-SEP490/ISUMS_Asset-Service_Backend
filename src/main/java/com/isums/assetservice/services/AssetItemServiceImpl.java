@@ -120,6 +120,10 @@ public class AssetItemServiceImpl implements AssetItemService {
             if (request.conditionPercent() != null)
                 assetItem.setConditionPercent(request.conditionPercent());
 
+            if(request.note() != null){
+                assetItem.setNote(request.note());
+            }
+
             if (request.status() != null)
                 assetItem.setStatus(request.status());
 
