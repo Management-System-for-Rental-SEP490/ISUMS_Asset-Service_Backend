@@ -25,11 +25,11 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer));
     }
 
-//    @Bean
-//    public CacheManager cacheManager() {
-//        CaffeineCacheManager manager = new CaffeineCacheManager();
-//        manager.setCacheSpecification("iotForecast=maximumSize=500,expireAfterWrite=30m");
-//        return manager;
-//    }
+    @Bean
+    public CacheManager cacheManager() {
+        CaffeineCacheManager manager = new CaffeineCacheManager();
+        manager.setCacheSpecification("iotForecast=maximumSize=500,expireAfterWrite=30m");
+        return manager;
+    }
 }
 
