@@ -20,21 +20,21 @@ public class IotAreaThresholdController {
     private final IotThresholdService thresholdService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN', 'TENANT')")
     public ApiResponse<List<ThresholdResponse>> getAll(@PathVariable UUID houseId, @PathVariable UUID areaId) {
         var res = thresholdService.getAllByArea(areaId);
         return ApiResponses.ok(res, "Success to get thresholds");
     }
 
     @PutMapping("/{metric}")
-    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN', 'TENANT')")
     public ApiResponse<ThresholdResponse> upsert(@PathVariable UUID houseId, @PathVariable UUID areaId, @PathVariable String metric, @Valid @RequestBody ThresholdRequest req) {
         var res = thresholdService.upsertAreaLevel(houseId, areaId, metric, req);
         return ApiResponses.ok(res, "Success to upsert threshold");
     }
 
     @DeleteMapping("/{metric}")
-    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN', 'TENANT')")
     public ApiResponse<Void> delete(@PathVariable UUID houseId, @PathVariable UUID areaId, @PathVariable String metric) {
         thresholdService.deleteAreaLevel(areaId, metric);
         return ApiResponses.noContent();
