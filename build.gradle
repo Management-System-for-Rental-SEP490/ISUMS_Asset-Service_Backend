@@ -67,6 +67,8 @@ dependencies {
     implementation "com.isums:proto-common:1.0-SNAPSHOT"
     implementation 'io.awspring.cloud:spring-cloud-aws-starter:4.0.0'
     implementation 'software.amazon.awssdk:iot:2.42.8'
+    implementation 'software.amazon.awssdk:iotdataplane:2.42.29'
+    implementation 'software.amazon.awssdk:s3:2.42.29'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
