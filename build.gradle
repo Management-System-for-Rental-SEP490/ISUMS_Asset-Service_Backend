@@ -57,7 +57,6 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation "org.springframework.grpc:spring-grpc-client-spring-boot-starter"
     implementation "org.springframework.grpc:spring-grpc-spring-boot-starter"
-    implementation 'software.amazon.awssdk:s3:2.42.14'
     implementation 'com.google.protobuf:protobuf-java-util:4.33.5'
     implementation 'com.google.protobuf:protobuf-java:4.34.0-RC2'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -69,8 +68,10 @@ dependencies {
     implementation 'software.amazon.awssdk:iot:2.42.8'
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation "org.mapstruct:mapstruct:1.6.3"
-    compileOnly 'org.projectlombok:lombok:1.18.42'
-    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    implementation 'software.amazon.awssdk:iotdataplane:2.42.29'
+    implementation 'software.amazon.awssdk:s3:2.42.29'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor "org.projectlombok:lombok-mapstruct-binding:0.2.0"
     annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
     runtimeOnly 'org.postgresql:postgresql'
@@ -115,17 +116,4 @@ tasks.named('bootBuildImage') {
 
 tasks.named('test') {
     useJUnitPlatform()
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs += [
-            '--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED',
-            '--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED',
-    ]
 }
