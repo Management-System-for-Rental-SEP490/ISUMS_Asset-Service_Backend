@@ -7,6 +7,7 @@ import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.domains.enums.IotControllerStatus;
+import com.isums.assetservice.domains.enums.NodeCapability;
 import com.isums.assetservice.domains.enums.Severity;
 import com.isums.assetservice.exceptions.ConflictException;
 import com.isums.assetservice.infrastructures.abstracts.IotNodeTokenService;
@@ -25,18 +26,24 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.CertificateStatus;
+import software.amazon.awssdk.services.iotdataplane.IotDataPlaneClient;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +60,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
     private final AssetCategoryRepository assetCategoryRepository;
     private final HouseGrpcImpl houseGrpc;
     private final ObjectMapper objectMapper;
+    private final S3Presigner s3Presigner;
+    private final IotDataPlaneClient iotDataPlaneClient;
 
     @Value("${app.iot.policy-name}")
     private String policyName;
@@ -65,6 +74,12 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Value("${app.ddb.alertsTable}")
     private String alertsTable;
+
+    @Value("${app.iot.ota-bucket}")
+    private String otaBucket;
+
+    @Value("${app.ddb.otaJobsTable:iot-ota-jobs}")
+    private String otaJobsTable;
 
     @Override
     public IotProvisionResponse provisionController(UUID houseId, UUID areaId, String deviceId) {
@@ -313,11 +328,15 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     @Transactional
-    public void updateNodeCapabilities(String thing, Set<String> capabilities) {
+    public void updateNodeCapabilities(String thing, Set<NodeCapability> capabilities) {
         IoTDevice device = ioTDeviceRepository.findByThing(thing)
                 .orElseThrow(() -> new NotFoundException("IoT device not found: " + thing));
 
-        device.setCapabilities(capabilities);
+        Set<String> capStrings = capabilities.stream()
+                .map(Enum::name)
+                .collect(Collectors.toSet());
+
+        device.setCapabilities(capStrings);
         ioTDeviceRepository.save(device);
 
         UUID houseId = device.getAssetItem().getHouseId();
@@ -325,7 +344,6 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         String areaName = getAreaName(houseId, areaId);
 
         ioTDeviceService.upsetToDynamoDB(device, areaName);
-
         log.info("Updated capabilities thing={} caps={}", thing, capabilities);
     }
 
@@ -392,6 +410,104 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             log.error("getAlerts failed houseId={}", houseId, e);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, "Failed to get alerts");
+        }
+    }
+
+    @Override
+    public void sendCommand(UUID houseId, IotCommandRequest req) {
+        IotController ctrl = controllerRepository.findByHouseId(houseId)
+                .orElseThrow(() -> new NotFoundException("No controller for house " + houseId));
+
+        String topic = "esp32/" + ctrl.getThingName() + "/cmd";
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("cmd", req.cmd());
+        if (req.serial() != null && !req.serial().isBlank())
+            payload.put("serial", req.serial());
+
+        try {
+            iotDataPlaneClient.publish(r -> r.topic(topic).qos(1)
+                    .payload(SdkBytes.fromUtf8String(objectMapper.writeValueAsString(payload)))
+            );
+            log.info("sendCommand houseId={} topic={} cmd={} serial={}",
+                    houseId, topic, req.cmd(), req.serial());
+        } catch (Exception e) {
+            log.error("sendCommand failed houseId={}", houseId, e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "MQTT publish failed");
+        }
+    }
+
+    @Override
+    public OtaUploadUrlResponse getOtaUploadUrl(UUID houseId, String filename) {
+        String key = "ota/" + houseId + "/" + System.currentTimeMillis() + "_" + filename;
+        int expiresIn = 3600;
+
+        PutObjectPresignRequest presignReq = PutObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofSeconds(expiresIn))
+                .putObjectRequest(r -> r.bucket(otaBucket).key(key)
+                        .contentType("application/octet-stream"))
+                .build();
+
+        String uploadUrl = s3Presigner.presignPutObject(presignReq).url().toString();
+        String downloadUrl = "https://" + otaBucket + ".s3.ap-southeast-1.amazonaws.com/" + key;
+
+        return new OtaUploadUrlResponse(uploadUrl, downloadUrl, expiresIn);
+    }
+
+    @Override
+    public OtaJobResponse triggerOta(UUID houseId, OtaRequest req) {
+        IotController ctrl = controllerRepository.findByHouseId(houseId)
+                .orElseThrow(() -> new NotFoundException("No controller for house " + houseId));
+
+        String jobId = "ota-" + UUID.randomUUID();
+        String topic = "esp32/" + ctrl.getThingName() + "/cmd";
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("cmd", "ota_update");
+        payload.put("job_id", jobId);
+        payload.put("url", req.url());
+        payload.put("version", req.version());
+        payload.put("target", req.target());
+        if (req.serial() != null) payload.put("serial", req.serial());
+        if (req.md5() != null) payload.put("md5", req.md5());
+
+        try {
+            iotDataPlaneClient.publish(r -> r.topic(topic).qos(1)
+                    .payload(SdkBytes.fromUtf8String(objectMapper.writeValueAsString(payload)))
+            );
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "MQTT publish failed");
+        }
+
+        saveOtaJob(jobId, houseId, ctrl.getThingName(), req);
+
+        return new OtaJobResponse(jobId, ctrl.getThingName(), req.target(),
+                req.serial(), req.version(), req.url(),
+                Instant.now().toEpochMilli());
+    }
+
+    @Override
+    public OtaStatusResponse getOtaStatus(UUID houseId, String jobId) {
+        try {
+            var result = dynamoDbClient.getItem(r -> r
+                    .tableName(otaJobsTable)
+                    .key(Map.of("jobId", av(jobId)))
+            );
+            if (!result.hasItem()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "OTA job not found: " + jobId);
+            }
+            Map<String, AttributeValue> item = result.item();
+            return new OtaStatusResponse(
+                    jobId,
+                    item.getOrDefault("status",   av("PENDING")).s(),
+                    item.containsKey("progress")  ? Integer.parseInt(item.get("progress").n()) : null,
+                    item.containsKey("error")     ? item.get("error").s() : null,
+                    item.containsKey("updatedAt") ? Long.parseLong(item.get("updatedAt").n()) : 0L
+            );
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("getOtaStatus failed jobId={}", jobId, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to get OTA status");
         }
     }
 
@@ -496,5 +612,40 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private void saveOtaJob(String jobId, UUID houseId, String thingName, OtaRequest req) {
+        try {
+            Map<String, AttributeValue> item = new HashMap<>();
+            item.put("jobId", av(jobId));
+            item.put("houseId", av(houseId.toString()));
+            item.put("thingName", av(thingName));
+            item.put("target", av(req.target()));
+            item.put("version", av(req.version()));
+            item.put("url", av(req.url()));
+            item.put("status", av("PENDING"));
+            item.put("progress", avn("0"));
+            item.put("createdAt", avn(String.valueOf(Instant.now().toEpochMilli())));
+            item.put("updatedAt", avn(String.valueOf(Instant.now().toEpochMilli())));
+            if (req.serial() != null) item.put("serial", av(req.serial()));
+            if (req.md5() != null) item.put("md5", av(req.md5()));
+
+            dynamoDbClient.putItem(PutItemRequest.builder()
+                    .tableName(otaJobsTable)
+                    .item(item)
+                    .build());
+
+            log.info("OTA job saved jobId={} houseId={} target={}", jobId, houseId, req.target());
+        } catch (Exception e) {
+            log.warn("saveOtaJob failed jobId={}: {}", jobId, e.getMessage());
+        }
+    }
+
+    private AttributeValue av(String v) {
+        return AttributeValue.builder().s(v).build();
+    }
+
+    private AttributeValue avn(String v) {
+        return AttributeValue.builder().n(v).build();
     }
 }

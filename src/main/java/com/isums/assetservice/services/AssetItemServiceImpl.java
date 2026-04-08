@@ -1,26 +1,26 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
-import com.isums.assetservice.domains.entities.AssetEvent;
-import com.isums.assetservice.domains.entities.AssetTag;
+import com.isums.assetservice.domains.dtos.BatchUpdateAssetRequest;
+import com.isums.assetservice.domains.dtos.BatchUpdateResponse;
+import com.isums.assetservice.domains.entities.*;
 import com.isums.assetservice.domains.enums.AssetEventType;
+import com.isums.assetservice.exceptions.NotFoundException;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
-import com.isums.assetservice.domains.entities.AssetCategory;
-import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
-import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetTagRepository;
+import com.isums.assetservice.infrastructures.repositories.*;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.*;
@@ -35,6 +35,8 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetMapper assetMapper;
     private final AssetItemRepository assetItemRepository;
     private final AssetTagRepository assetTagRepository;
+    private final S3ServiceImpl s3;
+    private final AssetImageRepository assetImageRepository;
 
     @Override
     public AssetItemDto CreateAssetItem(CreateAssetItemRequest request) {
@@ -45,7 +47,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             AssetItem assetItem = AssetItem.builder()
                     .houseId(request.houseId())
-                    .functionAreaId(request.functionalId())
+                    .functionAreaId(request.functionAreaId())
                     .category(assetCategory)
                     .displayName((request.displayName()))
                     .serialNumber((request.serialNumber()))
@@ -105,6 +107,10 @@ public class AssetItemServiceImpl implements AssetItemService {
                     throw new RuntimeException("condition must be in 0-100");                }
             }
 
+            if(request.functionAreaId() != null){
+                assetItem.setFunctionAreaId((request.functionAreaId()));
+            }
+
             if (request.displayName() != null)
                 assetItem.setDisplayName(request.displayName());
 
@@ -113,6 +119,10 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             if (request.conditionPercent() != null)
                 assetItem.setConditionPercent(request.conditionPercent());
+
+            if(request.note() != null){
+                assetItem.setNote(request.note());
+            }
 
             if (request.status() != null)
                 assetItem.setStatus(request.status());
@@ -221,6 +231,112 @@ public class AssetItemServiceImpl implements AssetItemService {
         asset.setConditionPercent(conditionScore);
 
         assetItemRepository.save(asset);
+    }
+
+    @Override
+    @Transactional
+    public void uploadAssetImages(UUID assetId, List<MultipartFile> files) {
+        boolean isExist = assetItemRepository.existsById(assetId);
+        if(!isExist){
+            throw new NotFoundException("Asset not found :  " + assetId);
+        }
+
+        AssetItem item = assetItemRepository.getReferenceById(assetId);
+
+        files.forEach(file -> {
+            String key = s3.upload(file,"asset/" + assetId);
+
+            AssetImage image = AssetImage.builder()
+                    .assetItem(item)
+                    .key(key)
+                    .build();
+
+            assetImageRepository.save(image);
+        });
+    }
+
+    @Override
+    public List<AssetImageDto> getAssetImages(UUID assetId) {
+        List<AssetImage> images = assetImageRepository.findByAssetItemId(assetId);
+
+        List<AssetImageDto> imageDto = new ArrayList<>();
+        images.forEach(image ->{
+            String url = s3.getImageUrl(image.getKey());
+            imageDto.add(new AssetImageDto(image.getId(),url,image.getCreatedAt()));
+        });
+
+        return imageDto;
+    }
+
+    @Override
+    public void deleteAssetImage(UUID assetId, UUID imageId) {
+        AssetImage image = assetImageRepository.findById(imageId)
+                .orElseThrow(() -> new NotFoundException("House image not found"));
+        s3.delete(image.getKey());
+        assetImageRepository.delete(image);
+    }
+
+    @Override
+    @Transactional
+    public BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request) {
+        try {
+
+            List<UUID> ids = request.updates().stream()
+                    .map(BatchUpdateAssetRequest.AssetUpdateItem::assetId)
+                    .toList();
+
+            List<AssetItem> assets = assetItemRepository.findAllById(ids);
+
+            if (assets.size() != ids.size()) {
+                throw new RuntimeException("Some assets not found");
+            }
+
+            Map<UUID, BatchUpdateAssetRequest.AssetUpdateItem> map = request.updates().stream()
+                    .collect(Collectors.toMap(BatchUpdateAssetRequest.AssetUpdateItem::assetId, a -> a));
+
+            UUID jobId = request.jobId();
+            if (request.jobId() == null) {
+                throw new RuntimeException("jobId is required");
+            }
+            for (AssetItem asset : assets) {
+
+                BatchUpdateAssetRequest.AssetUpdateItem update = map.get(asset.getId());
+
+                if (update.conditionPercent() != null) {
+                    if (update.conditionPercent() < 0 || update.conditionPercent() > 100) {
+                        throw new RuntimeException("condition must be 0-100");
+                    }
+                    asset.setConditionPercent(update.conditionPercent());
+                }
+
+                if (update.note() != null) {
+                    asset.setNote(update.note());
+                }
+
+
+
+                asset.getEvents().add(AssetEvent.builder()
+                                .eventType(AssetEventType.MAINTENANCE)
+                                .description("Updated condition to " + update.conditionPercent() + ", note: " + update.note())
+                                .createdAt(Instant.now())
+                                .createBy(staffId)
+                                .jobId(jobId)
+                                .assetItem(asset)
+                                .build()
+                );
+            }
+
+            List<AssetItem> saved = assetItemRepository.saveAll(assets);
+
+            return new BatchUpdateResponse(
+                    request.updates().size(),
+                    saved.size(),
+                    assetMapper.mapAssetItems(saved)
+            );
+
+        } catch (Exception ex) {
+            throw new RuntimeException("Error batch update asset: " + ex.getMessage());
+        }
     }
 
 }
