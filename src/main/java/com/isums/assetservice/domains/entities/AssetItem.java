@@ -3,8 +3,10 @@ package com.isums.assetservice.domains.entities;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.Instant;
 import java.util.*;
 
 @Entity
@@ -42,6 +44,11 @@ public class AssetItem {
 
     @Column(name = "condition_percent")
     private int conditionPercent;
+
+    private String note;
+
+    @UpdateTimestamp
+    private Instant updateAt;
 
     @Enumerated(EnumType.STRING)
     private AssetStatus status;

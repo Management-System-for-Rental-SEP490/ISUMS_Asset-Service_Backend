@@ -7,6 +7,7 @@ import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.domains.enums.IotControllerStatus;
+import com.isums.assetservice.domains.enums.NodeCapability;
 import com.isums.assetservice.domains.enums.Severity;
 import com.isums.assetservice.exceptions.ConflictException;
 import com.isums.assetservice.infrastructures.abstracts.IotNodeTokenService;
@@ -42,6 +43,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -326,11 +328,15 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     @Transactional
-    public void updateNodeCapabilities(String thing, Set<String> capabilities) {
+    public void updateNodeCapabilities(String thing, Set<NodeCapability> capabilities) {
         IoTDevice device = ioTDeviceRepository.findByThing(thing)
                 .orElseThrow(() -> new NotFoundException("IoT device not found: " + thing));
 
-        device.setCapabilities(capabilities);
+        Set<String> capStrings = capabilities.stream()
+                .map(Enum::name)
+                .collect(Collectors.toSet());
+
+        device.setCapabilities(capStrings);
         ioTDeviceRepository.save(device);
 
         UUID houseId = device.getAssetItem().getHouseId();
@@ -338,7 +344,6 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         String areaName = getAreaName(houseId, areaId);
 
         ioTDeviceService.upsetToDynamoDB(device, areaName);
-
         log.info("Updated capabilities thing={} caps={}", thing, capabilities);
     }
 

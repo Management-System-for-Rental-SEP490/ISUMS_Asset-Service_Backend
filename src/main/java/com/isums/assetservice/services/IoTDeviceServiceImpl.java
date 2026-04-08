@@ -137,7 +137,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "allIoT", key = "#houseId")
+//    @Cacheable(value = "allIoT", key = "#houseId")
     public IotControllerDto getAllIotByHouse(UUID houseId) {
         IotController controller = iotControllerRepository.findByHouseId(houseId)
                 .orElseThrow(() -> new NotFoundException("IoT controller not found for house: " + houseId));

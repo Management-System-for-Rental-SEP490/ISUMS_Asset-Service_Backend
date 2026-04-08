@@ -64,8 +64,7 @@ public final class AssetGrpcMapper {
     private AssetImageDto toImageDto(AssetImage img) {
         return AssetImageDto.newBuilder()
                 .setId(uuid(img.getId()))
-                .setImageUrl(str(img.getImageUrl()))
-                .setNote(str(img.getNote()))
+                .setImageUrl(str(img.getKey()))
                 .setCreatedAt(ts(img.getCreatedAt()))
                 .build();
     }
@@ -111,6 +110,7 @@ public final class AssetGrpcMapper {
             case REPLACED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_REPLACED;
             case DISPOSED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_DISPOSED;
             case TRANSFERRED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_TRANSFERRED;
+            case MAINTENANCE -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_MAINTENANCE;
         };
     }
 

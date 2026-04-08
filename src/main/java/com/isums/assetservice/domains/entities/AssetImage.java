@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
@@ -23,10 +24,9 @@ public class AssetImage {
     @UuidGenerator
     private UUID id;
 
-    private String imageUrl;
+    private String key;
 
-    private String note;
-
+    @CreationTimestamp
     private Instant createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

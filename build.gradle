@@ -43,9 +43,7 @@ ext {
 }
 
 dependencies {
-    implementation "org.mapstruct:mapstruct:1.6.3"
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
-    annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
@@ -64,15 +62,19 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'software.amazon.awssdk:dynamodb:2.41.30'
+    implementation 'software.amazon.awssdk:lambda:2.42.25'
     implementation "com.isums:proto-common:1.0-SNAPSHOT"
     implementation 'io.awspring.cloud:spring-cloud-aws-starter:4.0.0'
     implementation 'software.amazon.awssdk:iot:2.42.8'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+    implementation "org.mapstruct:mapstruct:1.6.3"
     implementation 'software.amazon.awssdk:iotdataplane:2.42.29'
     implementation 'software.amazon.awssdk:s3:2.42.29'
     compileOnly 'org.projectlombok:lombok'
-    runtimeOnly 'org.postgresql:postgresql'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor "org.projectlombok:lombok-mapstruct-binding:0.2.0"
+    annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
+    runtimeOnly 'org.postgresql:postgresql'
     testImplementation 'org.springframework.boot:spring-boot-starter-cache-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
