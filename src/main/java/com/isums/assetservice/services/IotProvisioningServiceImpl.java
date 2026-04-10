@@ -498,9 +498,9 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             Map<String, AttributeValue> item = result.item();
             return new OtaStatusResponse(
                     jobId,
-                    item.getOrDefault("status",   av("PENDING")).s(),
-                    item.containsKey("progress")  ? Integer.parseInt(item.get("progress").n()) : null,
-                    item.containsKey("error")     ? item.get("error").s() : null,
+                    item.getOrDefault("status", av("PENDING")).s(),
+                    item.containsKey("progress") ? Integer.parseInt(item.get("progress").n()) : null,
+                    item.containsKey("error") ? item.get("error").s() : null,
                     item.containsKey("updatedAt") ? Long.parseLong(item.get("updatedAt").n()) : 0L
             );
         } catch (ResponseStatusException e) {
@@ -508,6 +508,26 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         } catch (Exception e) {
             log.error("getOtaStatus failed jobId={}", jobId, e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to get OTA status");
+        }
+    }
+
+    @Override
+    public void sendPowerCutCommand(UUID houseId) {
+        IotController ctrl = controllerRepository.findByHouseId(houseId)
+                .orElseThrow(() -> new NotFoundException("No controller for house " + houseId));
+
+        String topic = "esp32/" + ctrl.getThingName() + "/cmd";
+        Map<String, Object> payload = Map.of("cmd", "POWER_CUT");
+
+        try {
+            iotDataPlaneClient.publish(r -> r
+                    .topic(topic)
+                    .qos(1)
+                    .payload(SdkBytes.fromUtf8String(objectMapper.writeValueAsString(payload)))
+                    .build());
+            log.info("[IoT] PowerCut command sent houseId={} topic={}", houseId, topic);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send power cut command: " + e.getMessage(), e);
         }
     }
 

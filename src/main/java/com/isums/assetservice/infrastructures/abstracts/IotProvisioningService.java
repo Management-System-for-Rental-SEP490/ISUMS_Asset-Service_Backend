@@ -32,4 +32,6 @@ public interface IotProvisioningService {
     OtaJobResponse triggerOta(UUID houseId, OtaRequest req);
 
     OtaStatusResponse getOtaStatus(UUID houseId, String jobId);
+
+    void sendPowerCutCommand(UUID houseId);
 }
