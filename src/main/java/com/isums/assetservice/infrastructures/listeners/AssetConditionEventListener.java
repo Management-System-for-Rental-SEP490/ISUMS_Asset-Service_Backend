@@ -1,5 +1,8 @@
 package com.isums.assetservice.infrastructures.listeners;
 
+import com.isums.assetservice.domains.dtos.PowerCutConfirmedEvent;
+import com.isums.assetservice.domains.entities.PowerCutJob;
+import com.isums.assetservice.domains.enums.PowerCutJobStatus;
 import com.isums.assetservice.domains.events.AssetConditionEvent;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
 import lombok.RequiredArgsConstructor;
