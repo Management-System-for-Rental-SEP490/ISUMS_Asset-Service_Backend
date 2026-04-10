@@ -24,4 +24,12 @@ public interface IotProvisioningService {
     void updateNodeCapabilities(String thing, Set<NodeCapability> capabilities);
 
     PagedResponse<AlertDto> getAlerts(UUID houseId, int limit, String cursor, String date, Severity level);
+
+    void sendCommand(UUID houseId, IotCommandRequest req);
+
+    OtaUploadUrlResponse getOtaUploadUrl(UUID houseId, String filename);
+
+    OtaJobResponse triggerOta(UUID houseId, OtaRequest req);
+
+    OtaStatusResponse getOtaStatus(UUID houseId, String jobId);
 }

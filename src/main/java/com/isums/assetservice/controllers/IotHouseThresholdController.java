@@ -21,14 +21,14 @@ public class IotHouseThresholdController {
     private final IotThresholdService thresholdService;
 
     @GetMapping()
-    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN', 'TENANT')")
     public ApiResponse<List<ThresholdResponse>> getHouseThresholds(@PathVariable UUID houseId) {
         var res = thresholdService.getAllByHouse(houseId);
         return ApiResponses.ok(res, "Success to get thresholds");
     }
 
     @PutMapping("/{metric}")
-    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
+    @PreAuthorize("hasAnyRole('LANDLORD','ADMIN', 'TENANT')")
     public ApiResponse<ThresholdResponse> upsertHouse(@PathVariable UUID houseId, @PathVariable String metric, @Valid @RequestBody ThresholdRequest req) {
         var res = thresholdService.upsertHouseLevel(houseId, metric, req);
         return ApiResponses.ok(res, "Success to upsert threshold");

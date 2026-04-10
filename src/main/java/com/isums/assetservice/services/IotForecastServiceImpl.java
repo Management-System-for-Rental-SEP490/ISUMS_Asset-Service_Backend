@@ -43,11 +43,14 @@ public class IotForecastServiceImpl implements IotForecastService {
     @Cacheable(value = "iotForecast", key = "#houseId + ':' + #month")
     public ForecastAllDto getForecastAll(UUID houseId, String month) {
         if (month == null || month.isBlank()) {
-            month = LocalDate.now(VN).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            month = LocalDate.now(VN)
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
         }
 
-        ForecastAllDto.ForecastMetricDto electricity = buildMetricDto(houseId, month, "electricity");
-        ForecastAllDto.ForecastMetricDto water = buildMetricDto(houseId, month, "water");
+        ForecastAllDto.ForecastMetricDto electricity =
+                buildMetricDto(houseId, month, "electricity");
+        ForecastAllDto.ForecastMetricDto water =
+                buildMetricDto(houseId, month, "water");
 
         return new ForecastAllDto(houseId, month, electricity, water);
     }
@@ -55,7 +58,8 @@ public class IotForecastServiceImpl implements IotForecastService {
     @Override
     public ForecastScopeDto getForecast(UUID houseId, UUID areaId, String metric, String month) {
         if (month == null || month.isBlank()) {
-            month = LocalDate.now(VN).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            month = LocalDate.now(VN)
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
         }
 
         String pk = areaId != null
@@ -68,12 +72,16 @@ public class IotForecastServiceImpl implements IotForecastService {
     @Override
     public void triggerForecast(UUID houseId) {
         try {
-            String payload = objectMapper.writeValueAsString(Map.of("houseId", houseId.toString()));
+            String payload = objectMapper.writeValueAsString(
+                    Map.of("house_ids", List.of(houseId.toString()))
+            );
+
             lambdaClient.invoke(InvokeRequest.builder()
                     .functionName(forecastDispatcherArn)
                     .invocationType(InvocationType.EVENT)
                     .payload(SdkBytes.fromString(payload, StandardCharsets.UTF_8))
                     .build());
+
             log.info("[Forecast] Triggered for houseId={}", houseId);
         } catch (Exception e) {
             log.error("[Forecast] Trigger failed houseId={}: {}", houseId, e.getMessage(), e);
@@ -81,7 +89,6 @@ public class IotForecastServiceImpl implements IotForecastService {
     }
 
     private ForecastAllDto.ForecastMetricDto buildMetricDto(UUID houseId, String month, String metric) {
-
         String housePk = houseId + "#" + metric;
         ForecastScopeDto house = getFromDynamoDB(housePk, month);
 
@@ -105,14 +112,19 @@ public class IotForecastServiceImpl implements IotForecastService {
 
                 if ("area".equals(scope) && metric.equals(itemMetric) && areaId != null) {
                     ForecastScopeDto dto = mapToDto(item);
-                    if (dto != null) areas.put(areaId, dto);
+                    if (dto != null) {
+                        areas.put(areaId, dto);
+                    }
                 }
             }
         } catch (Exception e) {
             log.warn("[Forecast] GSI query failed metric={}: {}", metric, e.getMessage());
         }
 
-        return new ForecastAllDto.ForecastMetricDto(house, areas.isEmpty() ? null : areas);
+        return new ForecastAllDto.ForecastMetricDto(
+                house,
+                areas.isEmpty() ? null : areas
+        );
     }
 
     private ForecastScopeDto getFromDynamoDB(String pk, String month) {
@@ -125,7 +137,9 @@ public class IotForecastServiceImpl implements IotForecastService {
                     ))
                     .build());
 
-            if (!r.hasItem()) return null;
+            if (!r.hasItem()) {
+                return null;
+            }
             return mapToDto(r.item());
         } catch (Exception e) {
             log.warn("[Forecast] getItem failed pk={}: {}", pk, e.getMessage());
@@ -133,7 +147,6 @@ public class IotForecastServiceImpl implements IotForecastService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private ForecastScopeDto mapToDto(Map<String, AttributeValue> item) {
         try {
             String areaIdStr = str(item, "areaId");
@@ -169,7 +182,10 @@ public class IotForecastServiceImpl implements IotForecastService {
                     str(item, "trend"),
                     (int) numLong(item, "trainingRows"),
                     daily,
-                    numLong(item, "forecastedAt")
+                    numLong(item, "forecastedAt"),
+                    str(item, "status"),
+                    str(item, "reason"),
+                    str(item, "method")
             );
         } catch (Exception e) {
             log.warn("[Forecast] mapToDto failed: {}", e.getMessage());
