@@ -4,6 +4,7 @@ import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.dtos.BatchUpdateAssetRequest;
 import com.isums.assetservice.domains.dtos.BatchUpdateResponse;
+import com.isums.assetservice.domains.dtos.ConfirmAssetRequest;
 import com.isums.assetservice.domains.entities.*;
 import com.isums.assetservice.domains.enums.AssetEventType;
 import com.isums.assetservice.exceptions.NotFoundException;
@@ -13,11 +14,16 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
+import com.isums.assetservice.infrastructures.grpcs.GrpcUserClient;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.*;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
+import com.isums.userservice.grpc.UserResponse;
+import common.statics.Roles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +43,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetTagRepository assetTagRepository;
     private final S3ServiceImpl s3;
     private final AssetImageRepository assetImageRepository;
+    private final GrpcUserClient grpcUserClient;
 
     @Override
     public AssetItemDto CreateAssetItem(CreateAssetItemRequest request) {
@@ -52,10 +59,19 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .displayName((request.displayName()))
                     .serialNumber((request.serialNumber()))
                     .conditionPercent((request.conditionPercent()))
-                    .status(request.status())
+                    .status(AssetStatus.WAITING_MANAGER_CONFIRM)
                     .build();
 
             AssetItem created = assetItemRepository.save(assetItem);
+
+            assetItem.getEvents().add(
+                    AssetEvent.builder()
+                            .eventType(AssetEventType.CREATED)
+                            .note("Asset created, waiting for manager approval")
+                            .createdAt(Instant.now())
+                            .assetItem(assetItem)
+                            .build()
+            );
 
             return assetMapper.mapAssetItem(created);
 
@@ -210,7 +226,7 @@ public class AssetItemServiceImpl implements AssetItemService {
             AssetEvent event = AssetEvent.builder()
                     .assetItem(item)
                     .eventType(AssetEventType.TRANSFERRED)
-                    .description("Transfer form " + oldHouseId + " to " + request.newHouseId())
+                    .note("Transfer form " + oldHouseId + " to " + request.newHouseId())
                     .createdAt(Instant.now())
                     .createBy(userId)
                     .build();
@@ -302,28 +318,52 @@ public class AssetItemServiceImpl implements AssetItemService {
 
                 BatchUpdateAssetRequest.AssetUpdateItem update = map.get(asset.getId());
 
-                if (update.conditionPercent() != null) {
-                    if (update.conditionPercent() < 0 || update.conditionPercent() > 100) {
+                Integer oldCondition = asset.getConditionPercent();
+                Integer newCondition = update.conditionPercent();
+                AssetStatus oldStatus = asset.getStatus();
+                AssetStatus newStatus = update.status();
+                boolean hasChange = false;
+
+                if (newCondition != null) {
+                    if (newCondition < 0 || newCondition > 100) {
                         throw new RuntimeException("condition must be 0-100");
                     }
-                    asset.setConditionPercent(update.conditionPercent());
+
+                    if (!newCondition.equals(oldCondition)) {
+                        asset.setConditionPercent(newCondition);
+                        hasChange = true;
+                    }
                 }
 
-                if (update.note() != null) {
+                if (update.note() != null && !update.note().equals(asset.getNote())) {
                     asset.setNote(update.note());
+                    hasChange = true;
                 }
 
+                if (newStatus != null) {
+                    if (newStatus != AssetStatus.BROKEN) {
+                        throw new RuntimeException("Staff can only set status to BROKEN");
+                    }
 
+                    if (oldStatus != AssetStatus.BROKEN) {
+                        asset.setStatus(AssetStatus.BROKEN);
+                        hasChange = true;
+                    }
+                }
 
-                asset.getEvents().add(AssetEvent.builder()
-                                .eventType(AssetEventType.MAINTENANCE)
-                                .description("Updated condition to " + update.conditionPercent() + ", note: " + update.note())
-                                .createdAt(Instant.now())
-                                .createBy(staffId)
-                                .jobId(jobId)
-                                .assetItem(asset)
-                                .build()
-                );
+                if (hasChange) {
+                    asset.getEvents().add(AssetEvent.builder()
+                                    .eventType(AssetEventType.MAINTENANCE)
+                                    .previousCondition(oldCondition)
+                                    .currentCondition(asset.getConditionPercent())
+                                    .note(asset.getNote())
+                                    .createdAt(Instant.now())
+                                    .createBy(staffId)
+                                    .jobId(jobId)
+                                    .assetItem(asset)
+                                    .build()
+                    );
+                }
             }
 
             List<AssetItem> saved = assetItemRepository.saveAll(assets);
@@ -337,6 +377,54 @@ public class AssetItemServiceImpl implements AssetItemService {
         } catch (Exception ex) {
             throw new RuntimeException("Error batch update asset: " + ex.getMessage());
         }
+    }
+
+    @Override
+    public AssetItemDto confirmAsset(UUID assetId, AssetStatus newStatus) {
+        try {
+
+            Jwt jwt = (Jwt) SecurityContextHolder.getContext()
+                    .getAuthentication()
+                    .getPrincipal();
+
+            String keycloakId = jwt.getSubject();
+
+            UserResponse userProfile = grpcUserClient
+                    .getUserIdAndRoleByKeyCloakId(keycloakId);
+
+            var roles = userProfile.getRolesList();
+
+            if (!roles.contains(Roles.MANAGER) && !roles.contains(Roles.LANDLORD)) {
+                throw new RuntimeException("Permission denied");
+            }
+
+            AssetItem asset = assetItemRepository.findById(assetId)
+                    .orElseThrow(() -> new RuntimeException("Asset not found"));
+
+            if (asset.getStatus() != AssetStatus.WAITING_MANAGER_CONFIRM) {
+                throw new RuntimeException("Asset is not in waiting state");
+            }
+
+            if (newStatus == AssetStatus.IN_USE) {
+                asset.setStatus(AssetStatus.IN_USE);
+
+            } else if (newStatus == AssetStatus.DELETED) {
+                asset.setStatus(AssetStatus.DELETED);
+
+            } else {
+                throw new RuntimeException("Invalid status");
+            }
+
+            asset.setUpdateAt(Instant.now());
+
+            AssetItem saved = assetItemRepository.save(asset);
+
+            return assetMapper.mapAssetItem(saved);
+
+        } catch (Exception ex) {
+            throw new RuntimeException("Error confirm asset: " + ex.getMessage());
+        }
+
     }
 
 }

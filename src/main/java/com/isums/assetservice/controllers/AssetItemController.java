@@ -94,4 +94,10 @@ public class AssetItemController {
         BatchUpdateResponse res = assetItemService.batchUpdateAssetCondition(UUID.fromString(user.getId()),request);
         return ApiResponses.ok(res, "Batch update asset successfully");
     }
+
+    @PutMapping("/{assetId}/manager-confirm-asset")
+    public ApiResponse<AssetItemDto> confirmAsset(@PathVariable UUID assetId, @RequestBody ConfirmAssetRequest request) {
+        AssetItemDto res = assetItemService.confirmAsset(assetId,request.status());
+        return ApiResponses.ok(res, "Confirm asset successfully");
+    }
 }

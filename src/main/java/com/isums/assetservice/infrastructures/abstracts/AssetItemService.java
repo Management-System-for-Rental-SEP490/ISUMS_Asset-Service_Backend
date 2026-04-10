@@ -7,6 +7,8 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.BatchUpdateAssetRequest;
 import com.isums.assetservice.domains.dtos.BatchUpdateResponse;
+import com.isums.assetservice.domains.dtos.ConfirmAssetRequest;
+import com.isums.assetservice.domains.enums.AssetStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -25,4 +27,5 @@ public interface AssetItemService {
     List<AssetImageDto> getAssetImages(UUID assetId);
     void deleteAssetImage(UUID assetId, UUID imageId);
     BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request);
+    AssetItemDto confirmAsset(UUID assetId, AssetStatus newStatus);
 }

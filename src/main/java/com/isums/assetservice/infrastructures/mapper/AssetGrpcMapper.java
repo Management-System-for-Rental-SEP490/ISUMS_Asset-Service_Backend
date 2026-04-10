@@ -73,7 +73,7 @@ public final class AssetGrpcMapper {
         return AssetEventDto.newBuilder()
                 .setId(uuid(e.getId()))
                 .setEventType(mapEventType(e.getEventType()))
-                .setDescription(str(e.getDescription()))
+                .setDescription(str(e.getNote()))
                 .setCreatedAt(ts(e.getCreatedAt()))
                 .setCreatedBy(uuid(e.getCreateBy()))
                 .build();
@@ -88,6 +88,7 @@ public final class AssetGrpcMapper {
         return switch (s) {
 
             case AVAILABLE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
+            case WAITING_MANAGER_CONFIRM -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_WAITING_MANAGER_CONFIRM;
             case IN_USE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
             case ACTIVE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
             case BROKEN -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
