@@ -31,8 +31,12 @@ public class AssetEvent {
     @Enumerated(EnumType.STRING)
     private AssetEventType eventType;
 
+    private Integer previousCondition;
+
+    private Integer currentCondition;
+
     @Column(columnDefinition = "text")
-    private String description;
+    private String note;
 
     @CreationTimestamp
     private Instant createdAt;

@@ -19,11 +19,11 @@ import java.util.UUID;
 public class AssetEventController {
     private final AssetEventService assetEventService;
 
-    @PostMapping
-    public ApiResponse<AssetEventDto> createAssetEvent(@RequestBody CreateAssetEventRequest request){
-        AssetEventDto response = assetEventService.createEvent(request);
-        return ApiResponses.created(response,"Create Event successfully");
-    }
+//    @PostMapping
+//    public ApiResponse<AssetEventDto> createAssetEvent(@RequestBody CreateAssetEventRequest request){
+//        AssetEventDto response = assetEventService.createEvent(request);
+//        return ApiResponses.created(response,"Create Event successfully");
+//    }
 
     @GetMapping
     public ApiResponse<List<AssetEventDto>> GetAllEvents(){

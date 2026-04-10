@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AssetEventService {
-    AssetEventDto createEvent(CreateAssetEventRequest request);
+    //AssetEventDto createEvent(CreateAssetEventRequest request);
     List<AssetEventDto> getAllAssetEvents();
     AssetEventDto updateEventStatus(UUID id, UpdateAssetEventRequest request);
     List<AssetEventDto> getEventsByJob(UUID jobId);

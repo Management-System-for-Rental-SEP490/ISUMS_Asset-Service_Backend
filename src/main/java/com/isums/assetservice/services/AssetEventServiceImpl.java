@@ -15,6 +15,7 @@ import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,30 +28,31 @@ public class AssetEventServiceImpl implements AssetEventService {
     private final AssetItemRepository assetItemRepository;
     private final AssetMapper assetMapper;
 
+//    @Override
+//    public AssetEventDto createEvent(CreateAssetEventRequest request) {
+//        try{
+//            AssetItem assetItem = assetItemRepository
+//                    .findById(request.assetId())
+//                    .orElseThrow(() -> new RuntimeException("ItemId not found"));
+//
+//            AssetEvent assetEvent = AssetEvent.builder()
+//                    .assetItem(assetItem)
+//                    .description(request.description())
+//                    .eventType(AssetEventType.CREATED)
+//                    .createdAt(Instant.now())
+//                    .createBy(request.createBy())
+//                    .build();
+//
+//            AssetEvent create = assetEventRepository.save(assetEvent);
+//            return assetMapper.mapAssetEvent(create);
+//
+//        } catch (Exception ex) {
+//            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
+//        }
+//    }
+
     @Override
-    public AssetEventDto createEvent(CreateAssetEventRequest request) {
-        try{
-            AssetItem assetItem = assetItemRepository
-                    .findById(request.assetId())
-                    .orElseThrow(() -> new RuntimeException("ItemId not found"));
-
-            AssetEvent assetEvent = AssetEvent.builder()
-                    .assetItem(assetItem)
-                    .description(request.description())
-                    .eventType(AssetEventType.CREATED)
-                    .createdAt(Instant.now())
-                    .createBy(request.createBy())
-                    .build();
-
-            AssetEvent create = assetEventRepository.save(assetEvent);
-            return assetMapper.mapAssetEvent(create);
-
-        } catch (Exception ex) {
-            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
-        }
-    }
-
-    @Override
+    @Transactional(readOnly = true)
     public List<AssetEventDto> getAllAssetEvents() {
         try{
             List<AssetEvent> assetEventDto = assetEventRepository.findAll();
@@ -85,7 +87,7 @@ public class AssetEventServiceImpl implements AssetEventService {
     public List<AssetEventDto> getEventsByJob(UUID jobId) {
         try {
 
-            List<AssetEvent> events = assetEventRepository.findByJobId(jobId);
+            List<AssetEvent> events = assetEventRepository.findByJobIdWithAsset(jobId);
 
                 return assetMapper.maAssetEvents(events);
         } catch (Exception ex) {

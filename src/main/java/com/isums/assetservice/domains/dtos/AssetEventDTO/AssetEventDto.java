@@ -14,9 +14,11 @@ import java.util.UUID;
 public class AssetEventDto {
     private UUID id;
     private AssetEventType eventType;
-    private String description;
+    private Integer previousCondition;
+    private Integer currentCondition;
+    private String note;
     private Instant createdAt;
     private Instant updatedAt;
-    private UUID createBy;
     private UUID assetId;
+    private String assetName;
 }

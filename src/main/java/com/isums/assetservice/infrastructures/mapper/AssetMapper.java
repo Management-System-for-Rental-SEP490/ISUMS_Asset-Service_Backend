@@ -31,6 +31,7 @@ public interface AssetMapper {
     List<AssetImageDto> maAssetImages(Collection<AssetImage> assetImages);
 
     @Mapping(source = "assetItem.id", target = "assetId")
+    @Mapping(source = "assetItem.displayName",target = "assetName")
     AssetEventDto mapAssetEvent(AssetEvent assetEvent);
     List<AssetEventDto> maAssetEvents(Collection<AssetEvent> assetEvents);
 
