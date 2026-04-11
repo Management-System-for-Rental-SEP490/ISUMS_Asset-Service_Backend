@@ -350,7 +350,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
     @Transactional
     @Override
-    public BatchUpdateResponse batchUpdateWithImages(UUID staffId, BatchUpdateAssetRequest request, Map<String, List<MultipartFile>> filesMap) {
+    public BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request) {
         try {
             if (request.jobId() == null) {
                 throw new RuntimeException("jobId is required");

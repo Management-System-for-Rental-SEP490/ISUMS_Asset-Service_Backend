@@ -87,11 +87,10 @@ public class AssetItemController {
         return ApiResponses.ok(null, "Delete image successfully");
     }
 
-    @PutMapping("/maintenance/batch",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request,
-                                                                      @RequestPart(required = false) Map<String, List<MultipartFile>> files) {
+    @PutMapping("/maintenance/batch")
+    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request){
         UserResponse user = grpcUserClient.getUserIdAndRoleByKeyCloakId(jwt.getSubject());
-        BatchUpdateResponse res = assetItemService.batchUpdateWithImages(UUID.fromString(user.getId()),request,files);
+        BatchUpdateResponse res = assetItemService.batchUpdateAssetCondition(UUID.fromString(user.getId()),request);
         return ApiResponses.ok(res, "Batch update asset successfully");
     }
 

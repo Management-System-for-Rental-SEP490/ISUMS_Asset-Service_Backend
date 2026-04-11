@@ -28,6 +28,6 @@ public interface AssetItemService {
     void updateCondition(UUID assetId, Integer conditionScore);
     AssetItemDto  uploadAssetImages(UUID assetId, List<MultipartFile> files);
     void deleteAssetImage(UUID assetId, UUID imageId);
-    BatchUpdateResponse batchUpdateWithImages(UUID staffId, BatchUpdateAssetRequest request, Map<String, List<MultipartFile>> filesMap);
+    BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request);
     AssetItemDto confirmAsset(UUID assetId, AssetStatus newStatus);
 }
