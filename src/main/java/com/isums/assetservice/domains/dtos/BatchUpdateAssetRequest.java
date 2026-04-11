@@ -15,5 +15,6 @@ public record BatchUpdateAssetRequest(
             Integer conditionPercent,
             String note,
             AssetStatus status
+
     ) {}
 }

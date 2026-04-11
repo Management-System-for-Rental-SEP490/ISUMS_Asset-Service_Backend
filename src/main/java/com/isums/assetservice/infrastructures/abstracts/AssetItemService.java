@@ -14,6 +14,7 @@ import common.paginations.dtos.PageResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface AssetItemService {
@@ -25,8 +26,8 @@ public interface AssetItemService {
     List<AssetItemDto> getAssetItemsByHouseId(UUID houseId);
     AssetItemDto updateHouseForAsset(UUID assetId, UpdateHouseRequest request, UUID userId);
     void updateCondition(UUID assetId, Integer conditionScore);
-    void uploadAssetImages(UUID assetId, List<MultipartFile> files);
+    AssetItemDto  uploadAssetImages(UUID assetId, List<MultipartFile> files);
     void deleteAssetImage(UUID assetId, UUID imageId);
-    BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request);
+    BatchUpdateResponse batchUpdateWithImages(UUID staffId, BatchUpdateAssetRequest request, Map<String, List<MultipartFile>> filesMap);
     AssetItemDto confirmAsset(UUID assetId, AssetStatus newStatus);
 }

@@ -28,6 +28,7 @@ import common.paginations.dtos.PageResponse;
 import common.paginations.specifications.SpecificationBuilder;
 import common.statics.Roles;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,6 +46,7 @@ import java.util.stream.Collectors;
 @Transactional
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AssetItemServiceImpl implements AssetItemService {
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetEventRepository assetEventRepository;
@@ -55,6 +57,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final AssetImageRepository assetImageRepository;
     private final GrpcUserClient grpcUserClient;
     private final CachedPageService cachedPageService;
+    private final AssetEventImageRepository assetEventImageRepository;
 
     private static final String PAGE_NS = "assets";
 
@@ -263,7 +266,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
     @Override
     @Transactional
-    public void uploadAssetImages(UUID assetId, List<MultipartFile> files) {
+    public AssetItemDto uploadAssetImages(UUID assetId, List<MultipartFile> files) {
         boolean isExist = assetItemRepository.existsById(assetId);
         if(!isExist){
             throw new NotFoundException("Asset not found :  " + assetId);
@@ -271,16 +274,58 @@ public class AssetItemServiceImpl implements AssetItemService {
 
         AssetItem item = assetItemRepository.getReferenceById(assetId);
 
-        files.forEach(file -> {
-            String key = s3.upload(file,"asset/" + assetId);
+        AssetEvent event = assetEventRepository
+                .findTopByAssetItemIdOrderByCreatedAtDesc(assetId)
+                .orElseThrow(() -> new RuntimeException("No event found"));
 
-            AssetImage image = AssetImage.builder()
-                    .assetItem(item)
-                    .key(key)
-                    .build();
+        List<AssetImage> oldImages = assetImageRepository.findByAssetItemId(assetId);
 
-            assetImageRepository.save(image);
-        });
+        for (AssetImage img : oldImages) {
+            try {
+                s3.delete(img.getKey());
+            } catch (Exception e) {
+                log.warn("Cannot delete S3 key={}", img.getKey());
+            }
+        }
+
+        assetImageRepository.deleteAll(oldImages);
+
+        List<AssetImageDto> imageDtos = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+
+            String key = s3.upload(file, "asset/" + assetId);
+
+            // current
+            AssetImage saved = assetImageRepository.save(
+                    AssetImage.builder()
+                            .assetItem(item)
+                            .key(key)
+                            .createdAt(Instant.now())
+                            .build()
+            );
+
+            // history
+            assetEventImageRepository.save(
+                    AssetEventImage.builder()
+                            .event(event)
+                            .assetId(assetId)
+                            .key(key)
+                            .createdAt(Instant.now())
+                            .build()
+            );
+
+            imageDtos.add(new AssetImageDto(
+                    saved.getId(),
+                    s3.getImageUrl(key),
+                    saved.getCreatedAt()
+            ));
+        }
+
+        AssetItemDto dto = assetMapper.mapAssetItem(item);
+        dto.setImages(imageDtos);
+
+        return dto;
     }
 
     private List<AssetImageDto> getAssetImages(UUID assetId) {
@@ -303,10 +348,13 @@ public class AssetItemServiceImpl implements AssetItemService {
         assetImageRepository.delete(image);
     }
 
-    @Override
     @Transactional
-    public BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request) {
+    @Override
+    public BatchUpdateResponse batchUpdateWithImages(UUID staffId, BatchUpdateAssetRequest request, Map<String, List<MultipartFile>> filesMap) {
         try {
+            if (request.jobId() == null) {
+                throw new RuntimeException("jobId is required");
+            }
 
             List<UUID> ids = request.updates().stream()
                     .map(BatchUpdateAssetRequest.AssetUpdateItem::assetId)
@@ -318,13 +366,15 @@ public class AssetItemServiceImpl implements AssetItemService {
                 throw new RuntimeException("Some assets not found");
             }
 
-            Map<UUID, BatchUpdateAssetRequest.AssetUpdateItem> map = request.updates().stream()
-                    .collect(Collectors.toMap(BatchUpdateAssetRequest.AssetUpdateItem::assetId, a -> a));
+            Map<UUID, BatchUpdateAssetRequest.AssetUpdateItem> map =
+                    request.updates().stream()
+                            .collect(Collectors.toMap(
+                                    BatchUpdateAssetRequest.AssetUpdateItem::assetId,
+                                    a -> a
+                            ));
 
             UUID jobId = request.jobId();
-            if (request.jobId() == null) {
-                throw new RuntimeException("jobId is required");
-            }
+
             for (AssetItem asset : assets) {
 
                 BatchUpdateAssetRequest.AssetUpdateItem update = map.get(asset.getId());
@@ -333,6 +383,7 @@ public class AssetItemServiceImpl implements AssetItemService {
                 Integer newCondition = update.conditionPercent();
                 AssetStatus oldStatus = asset.getStatus();
                 AssetStatus newStatus = update.status();
+
                 boolean hasChange = false;
 
                 if (newCondition != null) {
@@ -354,7 +405,9 @@ public class AssetItemServiceImpl implements AssetItemService {
                 if (newStatus != null) {
 
                     if (newStatus != AssetStatus.BROKEN && newStatus != oldStatus) {
-                        throw new RuntimeException("Staff can only set status to BROKEN or keep current status");
+                        throw new RuntimeException(
+                                "Staff can only set status to BROKEN or keep current status"
+                        );
                     }
 
                     if (newStatus == AssetStatus.BROKEN && oldStatus != AssetStatus.BROKEN) {
@@ -363,19 +416,18 @@ public class AssetItemServiceImpl implements AssetItemService {
                     }
                 }
 
-                if (hasChange) {
-                    asset.getEvents().add(AssetEvent.builder()
-                            .eventType(AssetEventType.MAINTENANCE)
-                            .previousCondition(oldCondition)
-                            .currentCondition(asset.getConditionPercent())
-                            .note(asset.getNote())
-                            .createdAt(Instant.now())
-                            .createBy(staffId)
-                            .jobId(jobId)
-                            .assetItem(asset)
-                            .build()
-                    );
-                }
+                AssetEvent event = AssetEvent.builder()
+                        .eventType(AssetEventType.MAINTENANCE)
+                        .previousCondition(oldCondition)
+                        .currentCondition(asset.getConditionPercent())
+                        .note(asset.getNote())
+                        .createdAt(Instant.now())
+                        .createBy(staffId)
+                        .jobId(jobId)
+                        .assetItem(asset)
+                        .build();
+
+                asset.getEvents().add(event);
             }
 
             List<AssetItem> saved = assetItemRepository.saveAll(assets);
@@ -389,6 +441,7 @@ public class AssetItemServiceImpl implements AssetItemService {
         } catch (Exception ex) {
             throw new RuntimeException("Error batch update asset: " + ex.getMessage());
         }
+
     }
 
     @Override

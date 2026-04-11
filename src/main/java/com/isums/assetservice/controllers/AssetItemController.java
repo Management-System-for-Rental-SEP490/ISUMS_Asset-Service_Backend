@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -86,10 +87,11 @@ public class AssetItemController {
         return ApiResponses.ok(null, "Delete image successfully");
     }
 
-    @PutMapping("/maintenance/batch")
-    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request) {
+    @PutMapping("/maintenance/batch",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request,
+                                                                      @RequestPart(required = false) Map<String, List<MultipartFile>> files) {
         UserResponse user = grpcUserClient.getUserIdAndRoleByKeyCloakId(jwt.getSubject());
-        BatchUpdateResponse res = assetItemService.batchUpdateAssetCondition(UUID.fromString(user.getId()),request);
+        BatchUpdateResponse res = assetItemService.batchUpdateWithImages(UUID.fromString(user.getId()),request,files);
         return ApiResponses.ok(res, "Batch update asset successfully");
     }
 
