@@ -6,11 +6,14 @@ import com.isums.assetservice.domains.dtos.ApiResponses;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -87,5 +90,28 @@ public class GlobalExceptionHandler {
                         .build())
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(res);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
+        HttpStatusCode statusCode = ex.getStatusCode();
+        String reason = ex.getReason() != null ? ex.getReason() : ex.getMessage();
+
+        String errorCode = statusCode.value() == 402 ? "PAYMENT_REQUIRED"
+                : statusCode.value() == 503       ? "SERVICE_UNAVAILABLE"
+                : statusCode.value() == 502       ? "BAD_GATEWAY"
+                : "HTTP_" + statusCode.value();
+
+        ApiResponse<Void> res = ApiResponses.fail(
+                HttpStatus.resolve(statusCode.value()) != null
+                        ? Objects.requireNonNull(HttpStatus.resolve(statusCode.value()))
+                        : HttpStatus.INTERNAL_SERVER_ERROR,
+                reason,
+                List.of(ApiError.builder()
+                        .code(errorCode)
+                        .message(reason)
+                        .build())
+        );
+        return ResponseEntity.status(statusCode).body(res);
     }
 }

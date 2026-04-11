@@ -34,4 +34,15 @@ public interface IoTDeviceRepository extends JpaRepository<IoTDevice, UUID> {
     Optional<IoTDevice> findBySerialNumber(String serialNumber);
 
     List<IoTDevice> findByAssetItem_HouseId(UUID houseId);
+
+    @Query("""
+            SELECT d FROM IoTDevice d
+            JOIN d.assetItem ai
+            WHERE ai.functionAreaId = :areaId
+            AND :capability MEMBER OF d.capabilities
+            """)
+    List<IoTDevice> findByAreaIdAndCapability(
+            @Param("areaId") UUID areaId,
+            @Param("capability") String capability
+    );
 }
