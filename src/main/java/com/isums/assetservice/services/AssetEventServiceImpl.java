@@ -1,12 +1,15 @@
 package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.dtos.AssetEventDTO.UpdateAssetEventRequest;
+import com.isums.assetservice.domains.dtos.AssetEventImageDto;
 import com.isums.assetservice.domains.dtos.AssetImageDto;
+import com.isums.assetservice.domains.entities.AssetEventImage;
 import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.entities.AssetEvent;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.repositories.AssetEventImageRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetImageRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
@@ -23,7 +26,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AssetEventServiceImpl implements AssetEventService {
     private final AssetEventRepository assetEventRepository;
-    private final AssetImageRepository assetImageRepository;
+    private final AssetEventImageRepository assetEventImageRepository;
     private final AssetMapper assetMapper;
     private final S3ServiceImpl s3;
 
@@ -91,7 +94,7 @@ public class AssetEventServiceImpl implements AssetEventService {
             return events.stream()
                     .map(event -> {
                         AssetEventDto dto = assetMapper.mapAssetEvent(event);
-                        dto.setImages(getAssetImages(event.getAssetItem().getId()));
+                        dto.setImages(getEventImages(event.getId()));
 
                         return dto;
                     })
@@ -126,19 +129,21 @@ public class AssetEventServiceImpl implements AssetEventService {
                 e.getUpdatedAt(),
                 e.getAssetItem().getId(),
                 e.getAssetItem().getDisplayName(),
-                getAssetImages(assetId)
+                getEventImages(assetId)
         );
     }
 
-    private List<AssetImageDto> getAssetImages(UUID assetId) {
-        List<AssetImage> images = assetImageRepository.findByAssetItemId(assetId);
+    private List<AssetEventImageDto> getEventImages(UUID eventId) {
 
-        List<AssetImageDto> imageDto = new ArrayList<>();
-        images.forEach(image ->{
-            String url = s3.getImageUrl(image.getKey());
-            imageDto.add(new AssetImageDto(image.getId(),url,image.getCreatedAt()));
-        });
+        List<AssetEventImage> images =
+                assetEventImageRepository.findByEventId(eventId);
 
-        return imageDto;
+        return images.stream()
+                .map(img -> new AssetEventImageDto(
+                        img.getId(),
+                        s3.getImageUrl(img.getKey()),
+                        img.getCreatedAt()
+                ))
+                .toList();
     }
 }

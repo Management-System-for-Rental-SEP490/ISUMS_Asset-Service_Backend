@@ -1,6 +1,8 @@
 package com.isums.assetservice.domains.dtos.AssetEventDTO;
 
+import com.isums.assetservice.domains.dtos.AssetEventImageDto;
 import com.isums.assetservice.domains.dtos.AssetImageDto;
+import com.isums.assetservice.domains.entities.AssetEventImage;
 import com.isums.assetservice.domains.enums.AssetEventType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,5 +26,5 @@ public class AssetEventDto {
     private Instant updatedAt;
     private UUID assetId;
     private String assetName;
-    private List<AssetImageDto> images;
+    private List<AssetEventImageDto> images;
 }

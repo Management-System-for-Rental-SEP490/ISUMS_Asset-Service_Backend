@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -87,7 +88,7 @@ public class AssetItemController {
     }
 
     @PutMapping("/maintenance/batch")
-    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request) {
+    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request){
         UserResponse user = grpcUserClient.getUserIdAndRoleByKeyCloakId(jwt.getSubject());
         BatchUpdateResponse res = assetItemService.batchUpdateAssetCondition(UUID.fromString(user.getId()),request);
         return ApiResponses.ok(res, "Batch update asset successfully");
