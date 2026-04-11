@@ -1,15 +1,18 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
 import com.isums.assetservice.domains.dtos.AssetTagDto.AttachTagRequest;
 import com.isums.assetservice.domains.dtos.AssetTagDto.TransferTagRequest;
+import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.domains.entities.AssetTag;
 import com.isums.assetservice.domains.entities.AssetTagLog;
 import com.isums.assetservice.domains.enums.TagAction;
 import com.isums.assetservice.infrastructures.abstracts.AssetTagService;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
+import com.isums.assetservice.infrastructures.repositories.AssetImageRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetTagLogRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetTagRepository;
@@ -18,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +31,9 @@ public class AssetTagServiceImpl implements AssetTagService {
     private final AssetTagRepository assetTagRepository;
     private final AssetItemRepository assetItemRepository;
     private final AssetTagLogRepository assetTagLogRepository;
+    private final AssetImageRepository assetImageRepository;
     private final AssetMapper assetMapper;
+    private final S3ServiceImpl s3;
 
 
     @Override
@@ -168,20 +175,42 @@ public class AssetTagServiceImpl implements AssetTagService {
     @Transactional
     @Override
     public AssetItemDto getAssetItemByTagValue(String tagValue) {
-        try{
-            if(tagValue == null || tagValue.isBlank()){
+        try {
+            if (tagValue == null || tagValue.isBlank()) {
                 throw new IllegalArgumentException("Tag value must not be empty");
             }
 
-            AssetTag tag = assetTagRepository.findByTagValueAndIsActiveTrue(tagValue)
+            AssetTag tag = assetTagRepository
+                    .findByTagValueAndIsActiveTrue(tagValue)
                     .orElseThrow(() -> new RuntimeException("Tag not found or not active"));
 
             AssetItem item = tag.getAssetItem();
-            List<AssetTag> tags = assetTagRepository.findByAssetItemIdAndIsActiveTrue(item.getId());
 
-            return assetMapper.mapAssetItem(item,tags);
+            List<AssetTag> tags = assetTagRepository
+                    .findByAssetItemIdAndIsActiveTrue(item.getId());
+
+            AssetItemDto dto = assetMapper.mapAssetItem(item);
+
+            dto.setTags(assetMapper.tagDtos(tags));
+
+            dto.setImages(getAssetImages(item.getId()));
+
+            return dto;
+
         } catch (Exception ex) {
-            throw new RuntimeException("Error to get asset item information" +ex.getMessage());
+            throw new RuntimeException("Error to get asset item information: " + ex.getMessage());
         }
+    }
+
+    private List<AssetImageDto> getAssetImages(UUID assetId) {
+        List<AssetImage> images = assetImageRepository.findByAssetItemId(assetId);
+
+        List<AssetImageDto> imageDto = new ArrayList<>();
+        images.forEach(image ->{
+            String url = s3.getImageUrl(image.getKey());
+            imageDto.add(new AssetImageDto(image.getId(),url,image.getCreatedAt()));
+        });
+
+        return imageDto;
     }
 }

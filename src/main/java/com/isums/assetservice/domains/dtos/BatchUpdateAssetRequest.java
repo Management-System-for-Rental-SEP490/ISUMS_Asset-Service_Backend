@@ -14,7 +14,6 @@ public record BatchUpdateAssetRequest(
             UUID assetId,
             Integer conditionPercent,
             String note,
-            AssetStatus status,
-            List<String> assetImages
+            AssetStatus status
     ) {}
 }

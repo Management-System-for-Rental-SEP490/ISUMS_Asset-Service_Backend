@@ -1,7 +1,8 @@
 package com.isums.assetservice.domains.dtos.AssetItemDTO;
 
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
-import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
+import com.isums.assetservice.domains.dtos.AssetImageDto;
+import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import lombok.AllArgsConstructor;
@@ -27,8 +28,7 @@ public class AssetItemDto {
     private AssetStatus status;
     private String note;
     private Instant updateAt;
-    private String nfcTag;
-    private String qrTag;
-//    private List<AssetImageDto> images;
+    private List<AssetTagDto> tags;
+    private List<AssetImageDto> images;
 //    private List<AssetEventDto> events;
 }

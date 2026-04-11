@@ -3,6 +3,7 @@ package com.isums.assetservice.domains.entities;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -49,6 +50,9 @@ public class AssetItem {
 
     @UpdateTimestamp
     private Instant updateAt;
+
+    @CreationTimestamp
+    private Instant createdAt;
 
     @Enumerated(EnumType.STRING)
     private AssetStatus status;

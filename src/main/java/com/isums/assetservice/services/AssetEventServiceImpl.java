@@ -1,6 +1,7 @@
 package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.dtos.AssetEventDTO.UpdateAssetEventRequest;
+import com.isums.assetservice.domains.entities.AssetEventImage;
 import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import com.isums.assetservice.domains.dtos.ApiResponses;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -93,5 +95,34 @@ public class AssetEventServiceImpl implements AssetEventService {
         } catch (Exception ex) {
             throw new RuntimeException("Cannot get events by job: " + ex.getMessage());
         }
+    }
+
+    public AssetEventDto getLatestEvent(UUID assetId) {
+
+        List<AssetEvent> list = assetEventRepository
+                .findLatestEvent(assetId);
+
+        if (list.isEmpty()) {
+            return null;
+        }
+
+        AssetEvent e = list.getFirst();
+
+        List<String> urls = e.getImages().stream()
+                .map(AssetEventImage::getKey)
+                .collect(Collectors.toList());
+
+        return new AssetEventDto(
+                e.getId(),
+                e.getEventType(),
+                e.getPreviousCondition(),
+                e.getCurrentCondition(),
+                e.getNote(),
+                e.getCreatedAt(),
+                e.getUpdatedAt(),
+                e.getAssetItem().getId(),
+                e.getAssetItem().getDisplayName(),
+                urls
+        );
     }
 }

@@ -1,5 +1,6 @@
 package com.isums.assetservice.domains.dtos;
 
+import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 
 import java.util.List;
