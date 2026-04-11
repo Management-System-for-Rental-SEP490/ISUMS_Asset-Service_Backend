@@ -15,4 +15,11 @@ public interface AssetEventRepository extends JpaRepository<AssetEvent, UUID> {
     ORDER BY e.createdAt DESC
     """)
     List<AssetEvent> findByJobIdWithAsset(UUID jobId);
+
+    @Query("""
+    SELECT e FROM AssetEvent e
+    WHERE e.assetItem.id = :assetId
+    ORDER BY e.createdAt DESC
+""")
+    List<AssetEvent> findLatestEvent(UUID assetId);
 }

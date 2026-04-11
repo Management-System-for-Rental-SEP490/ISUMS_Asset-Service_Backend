@@ -8,7 +8,11 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.infrastructures.grpcs.GrpcUserClient;
 import com.isums.userservice.grpc.UserResponse;
+import common.paginations.dtos.PageRequestParams;
+import common.paginations.dtos.PageResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,8 +30,8 @@ public class AssetItemController {
     private final GrpcUserClient grpcUserClient;
 
     @GetMapping
-    public ApiResponse<List<AssetItemDto>> GetAllAssetItems() {
-        List<AssetItemDto> response = assetItemService.GetAllAssetItems();
+    public ApiResponse<PageResponse<AssetItemDto>> GetAll(@ParameterObject @Valid @ModelAttribute PageRequestParams params) {
+        PageResponse<AssetItemDto> response = assetItemService.getAll(params.toPageRequest());
         return ApiResponses.ok(response,"Get all asset-items successfully");
     }
 
@@ -74,12 +78,6 @@ public class AssetItemController {
     public ApiResponse<AssetItemDto> uploadAssetImages(@PathVariable UUID assetId, @RequestParam("files") List<MultipartFile> files) {
         assetItemService.uploadAssetImages(assetId, files);
         return ApiResponses.ok(null, "Upload images successfully");
-    }
-
-    @GetMapping("{assetId}/images")
-    public ApiResponse<List<AssetImageDto>> getAssetImages(@PathVariable UUID assetId) {
-        List<AssetImageDto> images = assetItemService.getAssetImages(assetId);
-        return ApiResponses.ok(images, "Get images successfully");
     }
 
     @DeleteMapping("{assetId}/image/{imageId}")

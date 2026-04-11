@@ -1,7 +1,9 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
+import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
 import com.isums.assetservice.domains.dtos.BatchUpdateAssetRequest;
 import com.isums.assetservice.domains.dtos.BatchUpdateResponse;
 import com.isums.assetservice.domains.dtos.ConfirmAssetRequest;
@@ -19,15 +21,23 @@ import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.*;
 import com.isums.houseservice.grpc.HouseServiceGrpc;
 import com.isums.userservice.grpc.UserResponse;
+import common.paginations.cache.CachedPageService;
+import common.paginations.converters.SpringPageConverter;
+import common.paginations.dtos.PageRequest;
+import common.paginations.dtos.PageResponse;
+import common.paginations.specifications.SpecificationBuilder;
 import common.statics.Roles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.core.type.TypeReference;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,6 +54,9 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final S3ServiceImpl s3;
     private final AssetImageRepository assetImageRepository;
     private final GrpcUserClient grpcUserClient;
+    private final CachedPageService cachedPageService;
+
+    private static final String PAGE_NS = "assets";
 
     @Override
     public AssetItemDto CreateAssetItem(CreateAssetItemRequest request) {
@@ -81,35 +94,13 @@ public class AssetItemServiceImpl implements AssetItemService {
     }
 
     @Override
-    public List<AssetItemDto> GetAllAssetItems() {
-        try {
-            List<AssetItem> items = assetItemRepository.findAll();
-
-            List<UUID> assetIds = items.stream()
-                    .map(AssetItem::getId)
-                    .toList();
-
-            List<AssetTag> tags = assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
-
-            Map<UUID, List<AssetTag>> tagMap =
-                    tags.stream()
-                            .collect(Collectors.groupingBy(
-                                    tag -> tag.getAssetItem().getId()
-                            ));
-
-            return items.stream()
-                    .map(asset -> assetMapper.mapAssetItem(
-                            asset,
-                            tagMap.get(asset.getId())
-                    ))
-                    .toList();
-
-
-        } catch (Exception ex) {
-            throw new RuntimeException("Error to get asset item: " + ex.getMessage());
-        }
+    @Transactional(readOnly = true)
+    public PageResponse<AssetItemDto> getAll(PageRequest request) {
+        return cachedPageService.getOrLoad(PAGE_NS, request, new TypeReference<>() {
+                },
+                () -> loadPage(request)
+        );
     }
-
 
     @Override
     public AssetItemDto UpdateAssetItem(UUID id, UpdateAssetItemRequest request) {
@@ -175,7 +166,17 @@ public class AssetItemServiceImpl implements AssetItemService {
             AssetItem assetItem = assetItemRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("AssetItem with ID: " + id + " not found"));
 
-            return assetMapper.mapAssetItem(assetItem);
+            AssetItemDto dto = assetMapper.mapAssetItem(assetItem);
+
+            List<AssetTag> tags = assetTagRepository
+                    .findByAssetItemIdAndIsActiveTrue(id);
+
+            dto.setTags(assetMapper.tagDtos(tags));
+
+            dto.setImages(getAssetImages(id));
+
+            return dto;
+
 
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset item: " + ex.getMessage());
@@ -186,28 +187,39 @@ public class AssetItemServiceImpl implements AssetItemService {
     public List<AssetItemDto> getAssetItemsByHouseId(UUID houseId) {
         try {
             List<AssetItem> assetItems = assetItemRepository.findByHouseId(houseId);
+
             List<UUID> assetIds = assetItems.stream()
                     .map(AssetItem::getId)
                     .toList();
 
-            List<AssetTag> tags = assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
+            List<AssetTag> tags = assetTagRepository
+                    .findByAssetItemIdInAndIsActiveTrue(assetIds);
 
-            Map<UUID, List<AssetTag>> tagMap =
-                    tags.stream()
-                            .collect(Collectors.groupingBy(
-                                    tag -> tag.getAssetItem().getId()
-                            ));
+            Map<UUID, List<AssetTag>> tagMap = tags.stream()
+                    .collect(Collectors.groupingBy(
+                            tag -> tag.getAssetItem().getId()
+                    ));
+
             return assetItems.stream()
-                    .map(asset -> assetMapper.mapAssetItem(
-                            asset,
-                            tagMap.get(asset.getId())
-                    ))
+                    .map(asset -> {
+
+                        AssetItemDto dto = assetMapper.mapAssetItem(asset);
+                        dto.setTags(
+                                assetMapper.tagDtos(
+                                        tagMap.getOrDefault(asset.getId(), List.of())
+                                )
+                        );
+
+                        dto.setImages(getAssetImages(asset.getId()));
+
+                        return dto;
+                    })
                     .toList();
+
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset items: " + ex.getMessage());
         }
     }
-
     @Transactional
     @Override
     public AssetItemDto updateHouseForAsset(UUID assetId, UpdateHouseRequest request, UUID userId) {
@@ -271,8 +283,7 @@ public class AssetItemServiceImpl implements AssetItemService {
         });
     }
 
-    @Override
-    public List<AssetImageDto> getAssetImages(UUID assetId) {
+    private List<AssetImageDto> getAssetImages(UUID assetId) {
         List<AssetImage> images = assetImageRepository.findByAssetItemId(assetId);
 
         List<AssetImageDto> imageDto = new ArrayList<>();
@@ -341,11 +352,12 @@ public class AssetItemServiceImpl implements AssetItemService {
                 }
 
                 if (newStatus != null) {
-                    if (newStatus != AssetStatus.BROKEN) {
-                        throw new RuntimeException("Staff can only set status to BROKEN");
+
+                    if (newStatus != AssetStatus.BROKEN && newStatus != oldStatus) {
+                        throw new RuntimeException("Staff can only set status to BROKEN or keep current status");
                     }
 
-                    if (oldStatus != AssetStatus.BROKEN) {
+                    if (newStatus == AssetStatus.BROKEN && oldStatus != AssetStatus.BROKEN) {
                         asset.setStatus(AssetStatus.BROKEN);
                         hasChange = true;
                     }
@@ -353,15 +365,15 @@ public class AssetItemServiceImpl implements AssetItemService {
 
                 if (hasChange) {
                     asset.getEvents().add(AssetEvent.builder()
-                                    .eventType(AssetEventType.MAINTENANCE)
-                                    .previousCondition(oldCondition)
-                                    .currentCondition(asset.getConditionPercent())
-                                    .note(asset.getNote())
-                                    .createdAt(Instant.now())
-                                    .createBy(staffId)
-                                    .jobId(jobId)
-                                    .assetItem(asset)
-                                    .build()
+                            .eventType(AssetEventType.MAINTENANCE)
+                            .previousCondition(oldCondition)
+                            .currentCondition(asset.getConditionPercent())
+                            .note(asset.getNote())
+                            .createdAt(Instant.now())
+                            .createBy(staffId)
+                            .jobId(jobId)
+                            .assetItem(asset)
+                            .build()
                     );
                 }
             }
@@ -425,6 +437,73 @@ public class AssetItemServiceImpl implements AssetItemService {
             throw new RuntimeException("Error confirm asset: " + ex.getMessage());
         }
 
+    }
+
+    private PageResponse<AssetItemDto> loadPage(PageRequest request) {
+        AssetStatus statusFilter = request.<String>filterValue("status")
+                .map(s -> {
+                    try {
+                        return AssetStatus.valueOf(s.toUpperCase().trim());
+                    } catch (IllegalArgumentException e) {
+                        return null;
+                    }
+                })
+                .orElse(null);
+
+        String statusesRaw = request.<String>filterValue("statuses").orElse(null);
+
+        String houseIdRaw = request.<String>filterValue("houseId").orElse(null);
+        UUID houseIdFilter = houseIdRaw != null ? UUID.fromString(houseIdRaw) : null;
+
+        var spec = SpecificationBuilder.<AssetItem>create()
+                .keywordLike(request.keyword(), "name", "address")
+                .enumEq("status", statusFilter)
+                .enumInRaw("status", statusesRaw, AssetStatus.class)
+                .eq("houseId", houseIdFilter)
+                .build();
+
+        var pageable = SpringPageConverter.toPageable(request);
+
+        Page<AssetItem> page = assetItemRepository.findAll(spec, pageable);
+
+        List<AssetItem> items = page.getContent();
+
+        List<UUID> assetIds = items.stream()
+                .map(AssetItem::getId)
+                .toList();
+
+        List<AssetTag> tags = assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
+
+        Map<UUID, List<AssetTag>> tagMap = tags.stream().collect(Collectors.groupingBy(tag -> tag.getAssetItem().getId()));
+
+        List<AssetItemDto> dtos = items.stream()
+                .map(asset -> {
+
+                    AssetItemDto dto = assetMapper.mapAssetItem(asset);
+
+                    dto.setTags(
+                            assetMapper.tagDtos(tagMap.getOrDefault(asset.getId(), List.of()))
+                    );
+
+                    dto.setImages(getAssetImages(asset.getId()));
+
+                    return dto;
+                })
+                .toList();
+
+
+        return PageResponse.of(
+                dtos,
+                page.hasNext(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.getNumber(),
+                page.getSize()
+        );
+    }
+
+    private Duration contractEndBuffer() {
+        return Duration.ofDays(1);
     }
 
 }

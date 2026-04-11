@@ -43,4 +43,9 @@ public class AssetEventController {
 
         return ApiResponses.ok(res, "Get asset events by job successfully");
     }
+
+    @GetMapping("/assets/{id}/latest-event")
+    public ApiResponse<AssetEventDto> getLatest(@PathVariable UUID id){
+        return ApiResponses.ok(assetEventService.getLatestEvent(id), "Success");
+    }
 }

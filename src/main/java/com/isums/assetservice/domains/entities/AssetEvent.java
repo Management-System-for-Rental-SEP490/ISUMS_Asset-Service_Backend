@@ -2,16 +2,13 @@ package com.isums.assetservice.domains.entities;
 
 import com.isums.assetservice.domains.enums.AssetEventType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "assetEvents")
@@ -46,8 +43,9 @@ public class AssetEvent {
 
     private UUID createBy;
 
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_id")
     private AssetItem assetItem;
+
 }
+
