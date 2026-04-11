@@ -15,6 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AssetEventDto {
     private UUID id;
+    private UUID jobId;
     private AssetEventType eventType;
     private Integer previousCondition;
     private Integer currentCondition;

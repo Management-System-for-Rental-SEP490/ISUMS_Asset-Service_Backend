@@ -88,7 +88,15 @@ public class AssetEventServiceImpl implements AssetEventService {
 
             List<AssetEvent> events = assetEventRepository.findByJobIdWithAsset(jobId);
 
-                return assetMapper.maAssetEvents(events);
+            return events.stream()
+                    .map(event -> {
+                        AssetEventDto dto = assetMapper.mapAssetEvent(event);
+                        dto.setImages(getAssetImages(event.getAssetItem().getId()));
+
+                        return dto;
+                    })
+                    .toList();
+
         } catch (Exception ex) {
             throw new RuntimeException("Cannot get events by job: " + ex.getMessage());
         }
@@ -109,6 +117,7 @@ public class AssetEventServiceImpl implements AssetEventService {
 
         return new AssetEventDto(
                 e.getId(),
+                e.getJobId(),
                 e.getEventType(),
                 e.getPreviousCondition(),
                 e.getCurrentCondition(),

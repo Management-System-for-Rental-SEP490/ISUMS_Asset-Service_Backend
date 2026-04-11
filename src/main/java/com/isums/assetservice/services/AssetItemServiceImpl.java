@@ -166,7 +166,17 @@ public class AssetItemServiceImpl implements AssetItemService {
             AssetItem assetItem = assetItemRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("AssetItem with ID: " + id + " not found"));
 
-            return assetMapper.mapAssetItem(assetItem);
+            AssetItemDto dto = assetMapper.mapAssetItem(assetItem);
+
+            List<AssetTag> tags = assetTagRepository
+                    .findByAssetItemIdAndIsActiveTrue(id);
+
+            dto.setTags(assetMapper.tagDtos(tags));
+
+            dto.setImages(getAssetImages(id));
+
+            return dto;
+
 
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset item: " + ex.getMessage());
