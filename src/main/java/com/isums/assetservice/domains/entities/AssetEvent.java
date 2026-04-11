@@ -43,19 +43,9 @@ public class AssetEvent {
 
     private UUID createBy;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private Set<AssetEventImage> images = new LinkedHashSet<>();
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_id")
     private AssetItem assetItem;
 
-    public void addImage(AssetEventImage image) {
-        this.images.add(image);
-        image.setEvent(this);
-    }
 }
 

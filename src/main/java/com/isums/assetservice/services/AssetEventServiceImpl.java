@@ -1,24 +1,20 @@
 package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.dtos.AssetEventDTO.UpdateAssetEventRequest;
-import com.isums.assetservice.domains.entities.AssetEventImage;
+import com.isums.assetservice.domains.dtos.AssetImageDto;
+import com.isums.assetservice.domains.entities.AssetImage;
 import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
-import com.isums.assetservice.domains.dtos.ApiResponse;
-import com.isums.assetservice.domains.dtos.ApiResponses;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
-import com.isums.assetservice.domains.dtos.AssetEventDTO.CreateAssetEventRequest;
 import com.isums.assetservice.domains.entities.AssetEvent;
-import com.isums.assetservice.domains.entities.AssetItem;
-import com.isums.assetservice.domains.enums.AssetEventType;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
+import com.isums.assetservice.infrastructures.repositories.AssetImageRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,8 +23,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AssetEventServiceImpl implements AssetEventService {
     private final AssetEventRepository assetEventRepository;
-    private final AssetItemRepository assetItemRepository;
+    private final AssetImageRepository assetImageRepository;
     private final AssetMapper assetMapper;
+    private final S3ServiceImpl s3;
 
 //    @Override
 //    public AssetEventDto createEvent(CreateAssetEventRequest request) {
@@ -97,6 +94,8 @@ public class AssetEventServiceImpl implements AssetEventService {
         }
     }
 
+    @Override
+    @Transactional
     public AssetEventDto getLatestEvent(UUID assetId) {
 
         List<AssetEvent> list = assetEventRepository
@@ -108,10 +107,6 @@ public class AssetEventServiceImpl implements AssetEventService {
 
         AssetEvent e = list.getFirst();
 
-        List<String> urls = e.getImages().stream()
-                .map(AssetEventImage::getKey)
-                .collect(Collectors.toList());
-
         return new AssetEventDto(
                 e.getId(),
                 e.getEventType(),
@@ -122,7 +117,19 @@ public class AssetEventServiceImpl implements AssetEventService {
                 e.getUpdatedAt(),
                 e.getAssetItem().getId(),
                 e.getAssetItem().getDisplayName(),
-                urls
+                getAssetImages(assetId)
         );
+    }
+
+    private List<AssetImageDto> getAssetImages(UUID assetId) {
+        List<AssetImage> images = assetImageRepository.findByAssetItemId(assetId);
+
+        List<AssetImageDto> imageDto = new ArrayList<>();
+        images.forEach(image ->{
+            String url = s3.getImageUrl(image.getKey());
+            imageDto.add(new AssetImageDto(image.getId(),url,image.getCreatedAt()));
+        });
+
+        return imageDto;
     }
 }
