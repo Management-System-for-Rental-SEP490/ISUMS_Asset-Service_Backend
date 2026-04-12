@@ -18,7 +18,7 @@ import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
 import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
 import com.isums.houseservice.grpc.FunctionalAreaResponse;
-import jakarta.ws.rs.NotFoundException;
+import com.isums.assetservice.exceptions.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
