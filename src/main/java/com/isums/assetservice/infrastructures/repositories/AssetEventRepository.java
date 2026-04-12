@@ -3,6 +3,7 @@ package com.isums.assetservice.infrastructures.repositories;
 import com.isums.assetservice.domains.entities.AssetEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,18 @@ public interface AssetEventRepository extends JpaRepository<AssetEvent, UUID> {
     ORDER BY e.createdAt DESC
 """)
     List<AssetEvent> findLatestEvent(UUID assetId);
+
+
+    @Query("""
+    SELECT e FROM AssetEvent e
+    WHERE e.assetItem.id = :assetId
+    AND e.createdAt < (
+        SELECT MAX(e2.createdAt) FROM AssetEvent e2
+        WHERE e2.assetItem.id = :assetId
+    )
+    ORDER BY e.createdAt DESC
+    """)
+    List<AssetEvent> findPreviousEvent(@Param("assetId") UUID assetId);
 
     Optional<AssetEvent> findTopByAssetItemIdOrderByCreatedAtDesc(UUID assetId);
 }
