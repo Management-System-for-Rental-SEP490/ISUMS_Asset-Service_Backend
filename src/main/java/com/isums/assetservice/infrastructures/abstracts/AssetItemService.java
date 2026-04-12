@@ -11,6 +11,8 @@ import com.isums.assetservice.domains.dtos.ConfirmAssetRequest;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import common.paginations.dtos.PageRequest;
 import common.paginations.dtos.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -26,7 +28,7 @@ public interface AssetItemService {
     List<AssetItemDto> getAssetItemsByHouseId(UUID houseId);
     AssetItemDto updateHouseForAsset(UUID assetId, UpdateHouseRequest request, UUID userId);
     void updateCondition(UUID assetId, Integer conditionScore);
-    AssetItemDto  uploadAssetImages(UUID assetId, List<MultipartFile> files);
+    void  uploadAssetImages(UUID assetId, List<MultipartFile> files);
     void deleteAssetImage(UUID assetId, UUID imageId);
     BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request);
     AssetItemDto confirmAsset(UUID assetId, AssetStatus newStatus);

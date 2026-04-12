@@ -5,6 +5,7 @@ import com.isums.assetservice.domains.dtos.AssetEventImageDto;
 import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.entities.AssetEventImage;
 import com.isums.assetservice.domains.entities.AssetImage;
+import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.entities.AssetEvent;
@@ -16,7 +17,9 @@ import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +32,7 @@ public class AssetEventServiceImpl implements AssetEventService {
     private final AssetEventImageRepository assetEventImageRepository;
     private final AssetMapper assetMapper;
     private final S3ServiceImpl s3;
+    private final AssetImageRepository assetImageRepository;
 
 //    @Override
 //    public AssetEventDto createEvent(CreateAssetEventRequest request) {
@@ -87,22 +91,28 @@ public class AssetEventServiceImpl implements AssetEventService {
 
     @Override
     public List<AssetEventDto> getEventsByJob(UUID jobId) {
-        try {
 
-            List<AssetEvent> events = assetEventRepository.findByJobIdWithAsset(jobId);
+        List<AssetEvent> events = assetEventRepository.findByJobIdWithAsset(jobId);
 
-            return events.stream()
-                    .map(event -> {
-                        AssetEventDto dto = assetMapper.mapAssetEvent(event);
-                        dto.setImages(getEventImages(event.getId()));
+        return events.stream()
+                .map(event -> {
 
-                        return dto;
-                    })
-                    .toList();
+                    AssetEventDto dto = assetMapper.mapAssetEvent(event);
 
-        } catch (Exception ex) {
-            throw new RuntimeException("Cannot get events by job: " + ex.getMessage());
-        }
+                    dto.setImages(
+                            assetEventImageRepository.findByEventId(event.getId())
+                                    .stream()
+                                    .map(img -> new AssetEventImageDto(
+                                            img.getId(),
+                                            s3.getImageUrl(img.getKey()),
+                                            img.getCreatedAt()
+                                    ))
+                                    .toList()
+                    );
+
+                    return dto;
+                })
+                .toList();
     }
 
     @Override
@@ -129,8 +139,43 @@ public class AssetEventServiceImpl implements AssetEventService {
                 e.getUpdatedAt(),
                 e.getAssetItem().getId(),
                 e.getAssetItem().getDisplayName(),
-                getEventImages(assetId)
+                getEventImages(e.getId())
         );
+    }
+
+    @Override
+    public void uploadEventImages(UUID eventId, List<MultipartFile> files) {
+        AssetEvent event = assetEventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+
+        UUID assetId = event.getAssetItem().getId();
+
+        // ❌ delete current images
+        List<AssetImage> oldImages = assetImageRepository.findByAssetItemId(assetId);
+        assetImageRepository.deleteAll(oldImages);
+
+        for (MultipartFile file : files) {
+
+            String key = s3.upload(file, "asset/" + assetId);
+
+            // current
+            assetImageRepository.save(
+                    AssetImage.builder()
+                            .assetItem(event.getAssetItem())
+                            .key(key)
+                            .createdAt(Instant.now())
+                            .build()
+            );
+
+            // history
+            assetEventImageRepository.save(
+                    AssetEventImage.builder()
+                            .event(event)
+                            .key(key)
+                            .createdAt(Instant.now())
+                            .build()
+            );
+        }
     }
 
     private List<AssetEventImageDto> getEventImages(UUID eventId) {

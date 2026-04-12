@@ -8,7 +8,9 @@ import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.CreateAssetEventRequest;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -47,5 +49,13 @@ public class AssetEventController {
     @GetMapping("/assets/{id}/latest-event")
     public ApiResponse<AssetEventDto> getLatest(@PathVariable UUID id){
         return ApiResponses.ok(assetEventService.getLatestEvent(id), "Success");
+    }
+    @PostMapping(value = "/{eventId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<?> uploadEventImages(
+            @PathVariable UUID eventId,
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        assetEventService.uploadEventImages(eventId, files);
+        return ApiResponses.ok(null, "Upload images successfully");
     }
 }

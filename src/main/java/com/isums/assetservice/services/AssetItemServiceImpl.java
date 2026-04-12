@@ -1,12 +1,9 @@
 package com.isums.assetservice.services;
 
+import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
-import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
-import com.isums.assetservice.domains.dtos.BatchUpdateAssetRequest;
-import com.isums.assetservice.domains.dtos.BatchUpdateResponse;
-import com.isums.assetservice.domains.dtos.ConfirmAssetRequest;
 import com.isums.assetservice.domains.entities.*;
 import com.isums.assetservice.domains.enums.AssetEventType;
 import com.isums.assetservice.exceptions.NotFoundException;
@@ -27,6 +24,7 @@ import common.paginations.dtos.PageRequest;
 import common.paginations.dtos.PageResponse;
 import common.paginations.specifications.SpecificationBuilder;
 import common.statics.Roles;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -35,7 +33,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 import tools.jackson.core.type.TypeReference;
 
 import java.time.Duration;
@@ -266,7 +266,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
     @Override
     @Transactional
-    public AssetItemDto uploadAssetImages(UUID assetId, List<MultipartFile> files) {
+    public void uploadAssetImages(UUID assetId, List<MultipartFile> files) {
         boolean isExist = assetItemRepository.existsById(assetId);
         if(!isExist){
             throw new NotFoundException("Asset not found :  " + assetId);
@@ -274,29 +274,18 @@ public class AssetItemServiceImpl implements AssetItemService {
 
         AssetItem item = assetItemRepository.getReferenceById(assetId);
 
-        AssetEvent event = assetEventRepository
-                .findTopByAssetItemIdOrderByCreatedAtDesc(assetId)
-                .orElseThrow(() -> new RuntimeException("No event found"));
-
-        List<AssetImage> oldImages = assetImageRepository.findByAssetItemId(assetId);
-
-        for (AssetImage img : oldImages) {
-            try {
-                s3.delete(img.getKey());
-            } catch (Exception e) {
-                log.warn("Cannot delete S3 key={}", img.getKey());
-            }
-        }
-
-        assetImageRepository.deleteAll(oldImages);
-
+        AssetEvent event = assetEventRepository.save(
+                AssetEvent.builder()
+                        .assetItem(item)
+                        .createdAt(Instant.now())
+                        .build()
+        );
         List<AssetImageDto> imageDtos = new ArrayList<>();
 
         for (MultipartFile file : files) {
 
             String key = s3.upload(file, "asset/" + assetId);
 
-            // current
             AssetImage saved = assetImageRepository.save(
                     AssetImage.builder()
                             .assetItem(item)
@@ -305,11 +294,9 @@ public class AssetItemServiceImpl implements AssetItemService {
                             .build()
             );
 
-            // history
             assetEventImageRepository.save(
                     AssetEventImage.builder()
                             .event(event)
-                            .assetId(assetId)
                             .key(key)
                             .createdAt(Instant.now())
                             .build()
@@ -320,12 +307,11 @@ public class AssetItemServiceImpl implements AssetItemService {
                     s3.getImageUrl(key),
                     saved.getCreatedAt()
             ));
+
         }
 
         AssetItemDto dto = assetMapper.mapAssetItem(item);
         dto.setImages(imageDtos);
-
-        return dto;
     }
 
     private List<AssetImageDto> getAssetImages(UUID assetId) {
@@ -348,14 +334,13 @@ public class AssetItemServiceImpl implements AssetItemService {
         assetImageRepository.delete(image);
     }
 
-    @Transactional
     @Override
-    public BatchUpdateResponse batchUpdateAssetCondition(UUID staffId, BatchUpdateAssetRequest request) {
+    @Transactional
+    public BatchUpdateResponse batchUpdateAssetCondition(
+            UUID staffId,
+            BatchUpdateAssetRequest request
+    ) {
         try {
-            if (request.jobId() == null) {
-                throw new RuntimeException("jobId is required");
-            }
-
             List<UUID> ids = request.updates().stream()
                     .map(BatchUpdateAssetRequest.AssetUpdateItem::assetId)
                     .toList();
@@ -374,10 +359,15 @@ public class AssetItemServiceImpl implements AssetItemService {
                             ));
 
             UUID jobId = request.jobId();
+            if (jobId == null) {
+                throw new RuntimeException("jobId is required");
+            }
+
+            List<BatchUpdateResponse.EventResult> results = new ArrayList<>();
 
             for (AssetItem asset : assets) {
 
-                BatchUpdateAssetRequest.AssetUpdateItem update = map.get(asset.getId());
+                var update = map.get(asset.getId());
 
                 Integer oldCondition = asset.getConditionPercent();
                 Integer newCondition = update.conditionPercent();
@@ -386,15 +376,9 @@ public class AssetItemServiceImpl implements AssetItemService {
 
                 boolean hasChange = false;
 
-                if (newCondition != null) {
-                    if (newCondition < 0 || newCondition > 100) {
-                        throw new RuntimeException("condition must be 0-100");
-                    }
-
-                    if (!newCondition.equals(oldCondition)) {
-                        asset.setConditionPercent(newCondition);
-                        hasChange = true;
-                    }
+                if (newCondition != null && !newCondition.equals(oldCondition)) {
+                    asset.setConditionPercent(newCondition);
+                    hasChange = true;
                 }
 
                 if (update.note() != null && !update.note().equals(asset.getNote())) {
@@ -403,11 +387,8 @@ public class AssetItemServiceImpl implements AssetItemService {
                 }
 
                 if (newStatus != null) {
-
                     if (newStatus != AssetStatus.BROKEN && newStatus != oldStatus) {
-                        throw new RuntimeException(
-                                "Staff can only set status to BROKEN or keep current status"
-                        );
+                        throw new RuntimeException("Staff can only set BROKEN or keep current");
                     }
 
                     if (newStatus == AssetStatus.BROKEN && oldStatus != AssetStatus.BROKEN) {
@@ -416,32 +397,39 @@ public class AssetItemServiceImpl implements AssetItemService {
                     }
                 }
 
-                AssetEvent event = AssetEvent.builder()
-                        .eventType(AssetEventType.MAINTENANCE)
-                        .previousCondition(oldCondition)
-                        .currentCondition(asset.getConditionPercent())
-                        .note(asset.getNote())
-                        .createdAt(Instant.now())
-                        .createBy(staffId)
-                        .jobId(jobId)
-                        .assetItem(asset)
-                        .build();
+                // 👉 CREATE EVENT
+                if (hasChange) {
+                    AssetEvent event = AssetEvent.builder()
+                            .eventType(AssetEventType.MAINTENANCE)
+                            .previousCondition(oldCondition)
+                            .currentCondition(asset.getConditionPercent())
+                            .note(asset.getNote())
+                            .createdAt(Instant.now())
+                            .createBy(staffId)
+                            .jobId(jobId)
+                            .assetItem(asset)
+                            .build();
 
-                asset.getEvents().add(event);
+                    AssetEvent savedEvent = assetEventRepository.save(event);
+
+                    results.add(new BatchUpdateResponse.EventResult(
+                            asset.getId(),
+                            event.getId()
+                    ));
+                }
             }
 
-            List<AssetItem> saved = assetItemRepository.saveAll(assets);
+            assetItemRepository.saveAll(assets);
 
             return new BatchUpdateResponse(
                     request.updates().size(),
-                    saved.size(),
-                    assetMapper.mapAssetItems(saved)
+                    assets.size(),
+                    results   // 🔥 TRẢ EVENT ID CHO FE
             );
 
         } catch (Exception ex) {
             throw new RuntimeException("Error batch update asset: " + ex.getMessage());
         }
-
     }
 
     @Override
