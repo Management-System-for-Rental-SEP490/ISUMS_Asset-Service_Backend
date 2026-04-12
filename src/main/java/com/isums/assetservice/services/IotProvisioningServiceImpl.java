@@ -260,7 +260,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     @Transactional
-    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token, UUID areaId) {
+    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token,
+                                                UUID areaId, Set<NodeCapability> capabilities) {
         if (!iotNodeTokenService.isTokenValid(serial, token)) {
             log.warn("Invalid token for serial={}", serial);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
@@ -293,10 +294,15 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .build();
             AssetItem savedAsset = assetItemRepository.save(assetItem);
 
+            Set<String> capStrings = (capabilities != null && !capabilities.isEmpty())
+                    ? capabilities.stream().map(Enum::name).collect(Collectors.toSet())
+                    : new HashSet<>();
+
             IoTDevice device = IoTDevice.builder()
                     .thing(serial)
                     .serialNumber(serial)
                     .assetItem(savedAsset)
+                    .capabilities(capStrings)
                     .build();
             IoTDevice savedDevice = ioTDeviceRepository.save(device);
 
@@ -345,6 +351,28 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
         ioTDeviceService.upsetToDynamoDB(device, areaName);
         log.info("Updated capabilities thing={} caps={}", thing, capabilities);
+    }
+
+    @Override
+    @Transactional
+    public void syncNodeCapabilitiesIfEmpty(String thing, Set<String> capabilities) {
+        IoTDevice device = ioTDeviceRepository.findByThing(thing).orElse(null);
+        if (device == null) {
+            log.warn("syncNodeCapabilities: device not found thing={}", thing);
+            return;
+        }
+        if (!device.getCapabilities().isEmpty()) {
+            log.debug("syncNodeCapabilities: skip thing={} already has caps={}", thing, device.getCapabilities());
+            return;
+        }
+        device.setCapabilities(capabilities);
+        ioTDeviceRepository.save(device);
+
+        UUID houseId = device.getAssetItem().getHouseId();
+        UUID areaId  = device.getAssetItem().getFunctionAreaId();
+        String areaName = getAreaName(houseId, areaId);
+        ioTDeviceService.upsetToDynamoDB(device, areaName);
+        log.info("syncNodeCapabilities: thing={} caps={}", thing, capabilities);
     }
 
     @Override

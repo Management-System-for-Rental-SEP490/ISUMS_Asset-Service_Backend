@@ -19,9 +19,16 @@ public interface IotProvisioningService {
 
     void assignNodeToArea(String thing, UUID areaId);
 
-    NodeProvisionResponse provisionNode(UUID houseId, String serial, String token, UUID areaId);
+    NodeProvisionResponse provisionNode(UUID houseId, String serial, String token,
+                                        UUID areaId, Set<NodeCapability> capabilities);
 
     void updateNodeCapabilities(String thing, Set<NodeCapability> capabilities);
+
+    /**
+     * Safety net cho Lambda: chỉ set capabilities khi device chưa có.
+     * Không ghi đè nếu đã được set lúc provision.
+     */
+    void syncNodeCapabilitiesIfEmpty(String thing, Set<String> capabilities);
 
     PagedResponse<AlertDto> getAlerts(UUID houseId, int limit, String cursor, String date, Severity level);
 

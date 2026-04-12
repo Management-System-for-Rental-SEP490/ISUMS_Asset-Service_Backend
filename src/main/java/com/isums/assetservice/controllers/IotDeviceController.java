@@ -7,10 +7,7 @@ import com.isums.assetservice.domains.dtos.IotControllerDto;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -18,6 +15,7 @@ import java.util.UUID;
 @RequestMapping("/api/assets/iot-devices")
 @RequiredArgsConstructor
 public class IotDeviceController {
+
     private final IoTDeviceService iotDeviceService;
 
     @GetMapping("/{thing}")
@@ -29,6 +27,6 @@ public class IotDeviceController {
     @GetMapping("/house/{houseId}")
     public ApiResponse<IotControllerDto> getAllIotDevices(@PathVariable UUID houseId) {
         var res = iotDeviceService.getAllIotByHouse(houseId);
-        return ApiResponses.ok(res, "Success to get IoT devices");  
+        return ApiResponses.ok(res, "Success to get IoT devices");
     }
 }
