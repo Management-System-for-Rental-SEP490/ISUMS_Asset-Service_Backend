@@ -43,7 +43,7 @@ public class IoTDevice {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
             name = "iot_device_capabilities",
-            joinColumns = @JoinColumn(name = "iotdevice_id")
+            joinColumns = @JoinColumn(name = "device_id")
     )
     @Column(name = "capability")
     @Builder.Default

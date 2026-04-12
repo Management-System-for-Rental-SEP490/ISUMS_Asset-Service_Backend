@@ -40,8 +40,8 @@ public class AreaPowerServiceImpl implements AreaPowerService {
     private final IotDataPlaneClient iotDataPlaneClient;
     private final ObjectMapper objectMapper;
 
-    private static final String MQTT_CMD_POWER_OFF = "relay_on";
-    private static final String MQTT_CMD_POWER_ON  = "relay_off";
+    private static final String MQTT_CMD_POWER_OFF = "relay_off";
+    private static final String MQTT_CMD_POWER_ON  = "relay_on";
 
     @Override
     @Transactional
