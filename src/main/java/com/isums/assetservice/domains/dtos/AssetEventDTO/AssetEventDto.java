@@ -26,5 +26,6 @@ public class AssetEventDto {
     private Instant updatedAt;
     private UUID assetId;
     private String assetName;
+    private List<AssetEventImageDto> oldImages;
     private List<AssetEventImageDto> images;
 }

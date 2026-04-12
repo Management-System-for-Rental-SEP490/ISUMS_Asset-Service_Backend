@@ -2,10 +2,8 @@ package com.isums.assetservice.services;
 
 import com.isums.assetservice.domains.dtos.AssetEventDTO.UpdateAssetEventRequest;
 import com.isums.assetservice.domains.dtos.AssetEventImageDto;
-import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.entities.AssetEventImage;
 import com.isums.assetservice.domains.entities.AssetImage;
-import com.isums.assetservice.domains.entities.AssetItem;
 import com.isums.assetservice.infrastructures.abstracts.AssetEventService;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.entities.AssetEvent;
@@ -13,17 +11,15 @@ import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetEventImageRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetImageRepository;
-import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @RequiredArgsConstructor
@@ -60,7 +56,7 @@ public class AssetEventServiceImpl implements AssetEventService {
     @Override
     @Transactional(readOnly = true)
     public List<AssetEventDto> getAllAssetEvents() {
-        try{
+        try {
             List<AssetEvent> assetEventDto = assetEventRepository.findAll();
 
             return assetMapper.maAssetEvents(assetEventDto);
@@ -71,10 +67,10 @@ public class AssetEventServiceImpl implements AssetEventService {
 
     @Override
     public AssetEventDto updateEventStatus(UUID id, UpdateAssetEventRequest request) {
-        try{
+        try {
             AssetEvent event = assetEventRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Id not found"));
-            if(request.status() == null){
+            if (request.status() == null) {
                 throw new RuntimeException("Status is required");
             }
 
@@ -91,12 +87,10 @@ public class AssetEventServiceImpl implements AssetEventService {
 
     @Override
     public List<AssetEventDto> getEventsByJob(UUID jobId) {
-
         List<AssetEvent> events = assetEventRepository.findByJobIdWithAsset(jobId);
 
         return events.stream()
                 .map(event -> {
-
                     AssetEventDto dto = assetMapper.mapAssetEvent(event);
 
                     dto.setImages(
@@ -110,6 +104,22 @@ public class AssetEventServiceImpl implements AssetEventService {
                                     .toList()
                     );
 
+                    List<AssetEvent> previousEvents = assetEventRepository
+                            .findPreviousEvent(event.getAssetItem().getId());
+
+                    if (!previousEvents.isEmpty()) {
+                        dto.setOldImages(
+                                assetEventImageRepository.findByEventId(previousEvents.getFirst().getId())
+                                        .stream()
+                                        .map(img -> new AssetEventImageDto(
+                                                img.getId(),
+                                                s3.getImageUrl(img.getKey()),
+                                                img.getCreatedAt()
+                                        ))
+                                        .toList()
+                        );
+                    }
+
                     return dto;
                 })
                 .toList();
@@ -119,14 +129,10 @@ public class AssetEventServiceImpl implements AssetEventService {
     @Transactional
     public AssetEventDto getLatestEvent(UUID assetId) {
 
-        List<AssetEvent> list = assetEventRepository
+        List<AssetEvent> newList = assetEventRepository
                 .findLatestEvent(assetId);
 
-        if (list.isEmpty()) {
-            return null;
-        }
-
-        AssetEvent e = list.getFirst();
+        AssetEvent e = newList.getFirst();
 
         return new AssetEventDto(
                 e.getId(),
@@ -139,6 +145,7 @@ public class AssetEventServiceImpl implements AssetEventService {
                 e.getUpdatedAt(),
                 e.getAssetItem().getId(),
                 e.getAssetItem().getDisplayName(),
+                null,
                 getEventImages(e.getId())
         );
     }

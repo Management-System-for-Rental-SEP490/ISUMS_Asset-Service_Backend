@@ -24,9 +24,11 @@ public interface AssetMapper {
     AssetItemDto mapAssetItem(AssetItem assetItem);
     List<AssetItemDto> mapAssetItems(List<AssetItem> assetItems);
 
+    @Mapping(target = "detectionType", ignore = true)
     AssetCategoryDto mapAssetCategory(AssetCategory assetCategory);
     List<AssetCategoryDto> mapAssetCategories(List<AssetCategory> assetCategories);
 
+    @Mapping(target = "url", ignore = true)
     AssetImageDto mapAssetImage(AssetImage assetImage);
     List<AssetImageDto> maAssetImages(Collection<AssetImage> assetImages);
 
