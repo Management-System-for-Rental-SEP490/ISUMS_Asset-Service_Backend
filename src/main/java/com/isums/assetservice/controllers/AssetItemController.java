@@ -10,6 +10,7 @@ import com.isums.assetservice.infrastructures.grpcs.GrpcUserClient;
 import com.isums.userservice.grpc.UserResponse;
 import common.paginations.dtos.PageRequestParams;
 import common.paginations.dtos.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
@@ -76,7 +77,7 @@ public class AssetItemController {
     }
 
     @PostMapping(value = "/{assetId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<AssetItemDto> uploadAssetImages(@PathVariable UUID assetId, @RequestParam("files") List<MultipartFile> files) {
+    public ApiResponse<?> uploadAssetImages(@PathVariable UUID assetId, @RequestParam("files") List<MultipartFile> files) {
         assetItemService.uploadAssetImages(assetId, files);
         return ApiResponses.ok(null, "Upload images successfully");
     }
@@ -88,9 +89,14 @@ public class AssetItemController {
     }
 
     @PutMapping("/maintenance/batch")
-    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(@AuthenticationPrincipal Jwt jwt,@RequestBody BatchUpdateAssetRequest request){
+    public ApiResponse<BatchUpdateResponse> batchUpdateAssetCondition(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody BatchUpdateAssetRequest request
+    ) {
         UserResponse user = grpcUserClient.getUserIdAndRoleByKeyCloakId(jwt.getSubject());
-        BatchUpdateResponse res = assetItemService.batchUpdateAssetCondition(UUID.fromString(user.getId()),request);
+
+        BatchUpdateResponse res = assetItemService.batchUpdateAssetCondition(UUID.fromString(user.getId()), request);
+
         return ApiResponses.ok(res, "Batch update asset successfully");
     }
 

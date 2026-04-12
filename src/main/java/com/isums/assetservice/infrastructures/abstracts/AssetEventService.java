@@ -5,6 +5,7 @@ import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.CreateAssetEventRequest;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.UpdateAssetEventRequest;
 import com.isums.assetservice.domains.entities.AssetEvent;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,4 +16,5 @@ public interface AssetEventService {
     AssetEventDto updateEventStatus(UUID id, UpdateAssetEventRequest request);
     List<AssetEventDto> getEventsByJob(UUID jobId);
     AssetEventDto getLatestEvent(UUID assetId);
+    void uploadEventImages(UUID eventId, List<MultipartFile> files);
 }

@@ -30,8 +30,5 @@ public class AssetEventImage {
     @JoinColumn(name = "event_id")
     private AssetEvent event;
 
-    @Column(name = "asset_id", nullable = false)
-    private UUID assetId;
-
     private Instant createdAt;
 }
