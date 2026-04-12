@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/internal/iot")
+@RequestMapping("/api/assets/internal/iot")
 @RequiredArgsConstructor
 public class InternalIotController {
 
