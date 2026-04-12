@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -48,7 +49,9 @@ public class IotProvisioningController {
     @PostMapping("/provision-node")
     @PreAuthorize("hasAnyRole('LANDLORD','ADMIN')")
     public ApiResponse<NodeProvisionResponse> provisionNode(@PathVariable UUID houseId, @RequestBody ProvisionNodeRequest req) {
-        var res = iotProvisioningService.provisionNode(houseId, req.serial(), req.token(), req.areaId());
+        var res = iotProvisioningService.provisionNode(
+                houseId, req.serial(), req.token(), req.areaId(),
+                req.capabilities() != null ? req.capabilities() : Set.of());
         return ApiResponses.ok(res, "Node provisioned");
     }
 
