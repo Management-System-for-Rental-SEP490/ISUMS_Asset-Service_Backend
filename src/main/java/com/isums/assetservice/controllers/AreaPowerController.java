@@ -23,7 +23,7 @@ public class AreaPowerController {
 
 
     @PutMapping("/power")
-    @PreAuthorize("hasAnyRole('LANDLORD', 'MANAGER', 'TENANT')")
+//    @PreAuthorize("hasAnyRole('LANDLORD', 'MANAGER', 'TENANT')")
     public ApiResponse<AreaPowerStateResponse> togglePower(
             @PathVariable UUID houseId,
             @PathVariable UUID areaId,
@@ -36,7 +36,7 @@ public class AreaPowerController {
     }
 
     @GetMapping("/power")
-    @PreAuthorize("hasAnyRole('LANDLORD', 'MANAGER', 'TENANT')")
+//    @PreAuthorize("hasAnyRole('LANDLORD', 'MANAGER', 'TENANT')")
     public ApiResponse<AreaPowerStateResponse> getPowerState(
             @PathVariable UUID houseId,
             @PathVariable UUID areaId) {
