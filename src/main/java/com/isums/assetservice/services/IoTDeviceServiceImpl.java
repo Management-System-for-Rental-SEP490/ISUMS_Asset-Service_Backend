@@ -19,7 +19,6 @@ import com.isums.houseservice.grpc.HouseResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -143,6 +142,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 .orElseThrow(() -> new NotFoundException("IoT controller not found for house: " + houseId));
 
         HouseResponse house = houseGrpc.getHouseById(houseId);
+        log.info("=== got house: {}", house.getName());
 
         String areaName = null;
         if (controller.getAreaId() != null) {
@@ -152,6 +152,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
         }
 
         IotControllerDto controllerDto = ioTControllerMapper.toIotControllerDto(controller);
+        log.info("=== mapped controller");
         controllerDto.setAreaName(areaName);
         controllerDto.setHouseName(house.getName());
 
@@ -162,8 +163,10 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 ));
 
         List<IoTDevice> devices = iotDeviceRepository.findByAssetItem_HouseId(houseId);
+        log.info("=== got devices: {}", devices.size());
 
         List<IoTDeviceMapControllerDto> deviceDtos = ioTDeviceMapper.toIoTDeviceMapControllerDtoList(devices, areaNameMap);
+        log.info("=== mapped devices");
         controllerDto.setDevices(deviceDtos);
 
         return controllerDto;
