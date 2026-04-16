@@ -2,6 +2,8 @@ package com.isums.assetservice.domains.entities;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import common.i18n.TranslationMap;
+import common.i18n.TranslationMapConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
@@ -24,7 +26,8 @@ public class AssetCategory {
     private UUID id;
 
     @Column(columnDefinition = "text")
-    private String name;
+    @Convert(converter = TranslationMapConverter.class)
+    private TranslationMap name;
 
     private String code;
 
@@ -32,7 +35,8 @@ public class AssetCategory {
     private int compensationPercent;
 
     @Column(columnDefinition = "text")
-    private String description;
+    @Convert(converter = TranslationMapConverter.class)
+    private TranslationMap description;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
