@@ -3,6 +3,7 @@ package com.isums.assetservice.services;
 import com.isums.assetservice.domains.dtos.ForecastAllDto;
 import com.isums.assetservice.domains.dtos.ForecastDailyPoint;
 import com.isums.assetservice.domains.dtos.ForecastScopeDto;
+import com.isums.assetservice.domains.dtos.ForecastTriggerResultDto;
 import com.isums.assetservice.infrastructures.abstracts.IotForecastService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,8 @@ import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.InvocationType;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
+import software.amazon.awssdk.services.lambda.model.InvokeResponse;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
@@ -72,20 +75,46 @@ public class IotForecastServiceImpl implements IotForecastService {
     @Override
     public void triggerForecast(UUID houseId) {
         try {
-            String payload = objectMapper.writeValueAsString(
-                    Map.of("house_ids", List.of(houseId.toString()))
-            );
-
-            lambdaClient.invoke(InvokeRequest.builder()
-                    .functionName(forecastDispatcherArn)
-                    .invocationType(InvocationType.EVENT)
-                    .payload(SdkBytes.fromString(payload, StandardCharsets.UTF_8))
-                    .build());
-
+            invokeDispatcher(Map.of("house_ids", List.of(houseId.toString())), InvocationType.EVENT);
             log.info("[Forecast] Triggered for houseId={}", houseId);
         } catch (Exception e) {
             log.error("[Forecast] Trigger failed houseId={}: {}", houseId, e.getMessage(), e);
         }
+    }
+
+    @Override
+    public ForecastTriggerResultDto triggerAllForecasts() {
+        try {
+            InvokeResponse response = invokeDispatcher(Map.of("triggered_by", "manual"), InvocationType.REQUEST_RESPONSE);
+            if (response.functionError() != null && !response.functionError().isBlank()) {
+                throw new IllegalStateException("Forecast dispatcher error: " + response.functionError());
+            }
+
+            String payload = response.payload() == null ? "{}" : response.payload().asUtf8String();
+            JsonNode root = objectMapper.readTree(payload);
+            ForecastTriggerResultDto result = new ForecastTriggerResultDto(
+                    root.path("ok").asBoolean(false),
+                    root.path("created").asInt(0),
+                    root.path("skipped").asInt(0),
+                    root.path("total").asInt(0)
+            );
+
+            log.info("[Forecast] Triggered all active houses: created={} skipped={} total={}",
+                    result.created(), result.skipped(), result.total());
+            return result;
+        } catch (Exception e) {
+            log.error("[Forecast] Trigger all failed: {}", e.getMessage(), e);
+            throw new IllegalStateException("Forecast trigger all failed", e);
+        }
+    }
+
+    private InvokeResponse invokeDispatcher(Map<String, ?> payload, InvocationType invocationType) throws Exception {
+        String json = objectMapper.writeValueAsString(payload);
+        return lambdaClient.invoke(InvokeRequest.builder()
+                .functionName(forecastDispatcherArn)
+                .invocationType(invocationType)
+                .payload(SdkBytes.fromString(json, StandardCharsets.UTF_8))
+                .build());
     }
 
     private ForecastAllDto.ForecastMetricDto buildMetricDto(UUID houseId, String month, String metric) {

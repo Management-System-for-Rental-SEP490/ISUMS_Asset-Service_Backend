@@ -3,6 +3,7 @@ package com.isums.assetservice.infrastructures.mapper;
 import com.isums.assetservice.domains.dtos.IoTDeviceDto;
 import com.isums.assetservice.domains.dtos.IoTDeviceMapControllerDto;
 import com.isums.assetservice.domains.entities.IoTDevice;
+import common.i18n.TranslationMap;
 import org.mapstruct.*;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public interface IoTDeviceMapper {
     List<IoTDeviceDto> toIoTDeviceDtoList(List<IoTDevice> iotDevices);
 
     @Mapping(source = "assetItem.id", target = "assetId")
-    @Mapping(source = "assetItem.displayName", target = "displayName")
+    @Mapping(source = "assetItem.displayName", target = "displayName", qualifiedByName = "resolveTranslation")
     @Mapping(source = "assetItem.category.code", target = "categoryCode")
     @Mapping(source = "assetItem.status", target = "status")
     @Mapping(source = "assetItem.functionAreaId", target = "areaName", qualifiedByName = "mapAreaName")
@@ -30,6 +31,11 @@ public interface IoTDeviceMapper {
             List<IoTDevice> iotDevices,
             @Context Map<String, String> areaNameMap
     );
+
+    @Named("resolveTranslation")
+    default String resolveTranslation(TranslationMap tm) {
+        return tm == null ? null : tm.resolve();
+    }
 
     @Named("mapAreaName")
     default String mapAreaName(UUID functionAreaId, @Context Map<String, String> areaNameMap) {

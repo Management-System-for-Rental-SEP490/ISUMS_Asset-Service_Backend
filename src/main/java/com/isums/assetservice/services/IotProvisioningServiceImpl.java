@@ -3,6 +3,7 @@ package com.isums.assetservice.services;
 import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
+import common.i18n.TranslationMap;
 import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.domains.enums.AssetStatus;
@@ -287,7 +288,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .houseId(houseId)
                     .functionAreaId(areaId)
                     .category(category)
-                    .displayName("Node " + serial.substring(Math.max(0, serial.length() - 8)))
+                    .displayName(TranslationMap.ofDefault("Node " + serial.substring(Math.max(0, serial.length() - 8))))
                     .serialNumber(serial)
                     .conditionPercent(100)
                     .status(AssetStatus.IN_USE)

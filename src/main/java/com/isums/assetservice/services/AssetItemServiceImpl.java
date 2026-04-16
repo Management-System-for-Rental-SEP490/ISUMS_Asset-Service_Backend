@@ -12,6 +12,7 @@ import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateAssetItemRequest;
 import com.isums.assetservice.domains.enums.AssetStatus;
+import common.i18n.TranslationMap;
 import com.isums.assetservice.infrastructures.abstracts.IoTDeviceService;
 import com.isums.assetservice.infrastructures.grpcs.GrpcUserClient;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
@@ -72,7 +73,7 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .houseId(request.houseId())
                     .functionAreaId(request.functionAreaId())
                     .category(assetCategory)
-                    .displayName((request.displayName()))
+                    .displayName(TranslationMap.of(request.displayName()))
                     .serialNumber((request.serialNumber()))
                     .conditionPercent((request.conditionPercent()))
                     .status(AssetStatus.WAITING_MANAGER_CONFIRM)
@@ -122,7 +123,7 @@ public class AssetItemServiceImpl implements AssetItemService {
             }
 
             if (request.displayName() != null)
-                assetItem.setDisplayName(request.displayName());
+                assetItem.setDisplayName(TranslationMap.of(request.displayName()));
 
             if (request.serialNumber() != null)
                 assetItem.setSerialNumber(request.serialNumber());

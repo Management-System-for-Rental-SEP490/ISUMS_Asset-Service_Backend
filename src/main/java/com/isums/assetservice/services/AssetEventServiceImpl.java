@@ -144,7 +144,7 @@ public class AssetEventServiceImpl implements AssetEventService {
                 e.getCreatedAt(),
                 e.getUpdatedAt(),
                 e.getAssetItem().getId(),
-                e.getAssetItem().getDisplayName(),
+                e.getAssetItem().getDisplayName() != null ? e.getAssetItem().getDisplayName().resolve() : null,
                 null,
                 getEventImages(e.getId())
         );

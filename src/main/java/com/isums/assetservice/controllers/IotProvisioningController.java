@@ -6,6 +6,9 @@ import com.isums.assetservice.domains.enums.Severity;
 import com.isums.assetservice.infrastructures.abstracts.IotProvisioningService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,25 +21,34 @@ import java.util.UUID;
 public class IotProvisioningController {
 
     private final IotProvisioningService iotProvisioningService;
+    private final MessageSource messageSource;
+
+    private String msg(String code) {
+        try {
+            return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
+        } catch (NoSuchMessageException e) {
+            return code;
+        }
+    }
 
     @PostMapping("/provision")
     @PreAuthorize("hasRole('LANDLORD') or hasRole('MANAGER')")
     public ApiResponse<IotProvisionResponse> provision(@PathVariable UUID houseId, @RequestBody IotProvisionRequest req) {
         var res = iotProvisioningService.provisionController(houseId, req.areaId(), req.deviceId());
-        return ApiResponses.created(res, "IoT controller provisioned successfully");
+        return ApiResponses.created(res, msg("iot.controller_provisioned"));
     }
 
     @DeleteMapping("/deprovision")
     @PreAuthorize("hasRole('LANDLORD') or hasRole('MANAGER')")
     public ApiResponse<Void> deprovision(@PathVariable UUID houseId) {
         iotProvisioningService.deprovisionController(houseId);
-        return ApiResponses.ok(null, "IoT controller deprovisioned successfully");
+        return ApiResponses.ok(null, msg("iot.controller_deprovisioned"));
     }
 
     @GetMapping("/controller")
     public ApiResponse<ControllerInfoResponse> getController(@PathVariable UUID houseId) {
         var res = iotProvisioningService.getControllerByHouse(houseId);
-        return ApiResponses.ok(res, "IoT controller retrieved successfully");
+        return ApiResponses.ok(res, msg("iot.controller_retrieved"));
     }
 
     @PutMapping("/nodes/{thing}/assign-area")
@@ -52,7 +64,7 @@ public class IotProvisioningController {
         var res = iotProvisioningService.provisionNode(
                 houseId, req.serial(), req.token(), req.areaId(),
                 req.capabilities() != null ? req.capabilities() : Set.of());
-        return ApiResponses.ok(res, "Node provisioned");
+        return ApiResponses.ok(res, msg("iot.node_provisioned"));
     }
 
     @PutMapping("/nodes/{thing}/capabilities")
@@ -67,7 +79,7 @@ public class IotProvisioningController {
     public ApiResponse<PagedResponse<AlertDto>> getAlerts(@PathVariable UUID houseId, @RequestParam(defaultValue = "10") int limit, @RequestParam(required = false) String cursor,
                                                           @RequestParam(required = false) String date, @RequestParam(required = false) Severity level) {
         var res = iotProvisioningService.getAlerts(houseId, limit, cursor, date, level);
-        return ApiResponses.ok(res, "Alerts retrieved");
+        return ApiResponses.ok(res, msg("iot.alerts_retrieved"));
     }
 
     @PostMapping("/cmd")
@@ -76,7 +88,7 @@ public class IotProvisioningController {
             @PathVariable UUID houseId,
             @RequestBody IotCommandRequest req) {
         iotProvisioningService.sendCommand(houseId, req);
-        return ApiResponses.ok(null, "Command sent");
+        return ApiResponses.ok(null, msg("iot.command_sent"));
     }
 
     @GetMapping("/ota/upload-url")
@@ -85,7 +97,7 @@ public class IotProvisioningController {
             @PathVariable UUID houseId,
             @RequestParam String filename) {
         var res = iotProvisioningService.getOtaUploadUrl(houseId, filename);
-        return ApiResponses.ok(res, "Upload URL generated");
+        return ApiResponses.ok(res, msg("iot.upload_url_generated"));
     }
 
     @PostMapping("/ota")
@@ -94,7 +106,7 @@ public class IotProvisioningController {
             @PathVariable UUID houseId,
             @RequestBody OtaRequest req) {
         var res = iotProvisioningService.triggerOta(houseId, req);
-        return ApiResponses.ok(res, "OTA triggered");
+        return ApiResponses.ok(res, msg("iot.ota_triggered"));
     }
 
     @GetMapping("/ota/{jobId}")
@@ -103,6 +115,6 @@ public class IotProvisioningController {
             @PathVariable UUID houseId,
             @PathVariable String jobId) {
         var res = iotProvisioningService.getOtaStatus(houseId, jobId);
-        return ApiResponses.ok(res, "OTA status");
+        return ApiResponses.ok(res, msg("iot.ota_status"));
     }
 }
