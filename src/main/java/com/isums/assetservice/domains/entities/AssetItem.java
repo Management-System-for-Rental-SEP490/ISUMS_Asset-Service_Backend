@@ -51,6 +51,10 @@ public class AssetItem {
 
     private String note;
 
+    @Column(name = "note_translations", columnDefinition = "text")
+    @Convert(converter = TranslationMapConverter.class)
+    private TranslationMap noteTranslations;
+
     @UpdateTimestamp
     private Instant updateAt;
 

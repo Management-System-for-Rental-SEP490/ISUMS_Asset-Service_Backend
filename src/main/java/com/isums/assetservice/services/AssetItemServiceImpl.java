@@ -59,6 +59,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final GrpcUserClient grpcUserClient;
     private final CachedPageService cachedPageService;
     private final AssetEventImageRepository assetEventImageRepository;
+    private final TranslationAutoFillService translationAutoFillService;
 
     private static final String PAGE_NS = "assets";
 
@@ -73,7 +74,7 @@ public class AssetItemServiceImpl implements AssetItemService {
                     .houseId(request.houseId())
                     .functionAreaId(request.functionAreaId())
                     .category(assetCategory)
-                    .displayName(TranslationMap.of(request.displayName()))
+                    .displayName(translationAutoFillService.complete(request.displayName()))
                     .serialNumber((request.serialNumber()))
                     .conditionPercent((request.conditionPercent()))
                     .status(AssetStatus.WAITING_MANAGER_CONFIRM)
@@ -123,7 +124,7 @@ public class AssetItemServiceImpl implements AssetItemService {
             }
 
             if (request.displayName() != null)
-                assetItem.setDisplayName(TranslationMap.of(request.displayName()));
+                assetItem.setDisplayName(translationAutoFillService.complete(request.displayName()));
 
             if (request.serialNumber() != null)
                 assetItem.setSerialNumber(request.serialNumber());
@@ -133,6 +134,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
             if(request.note() != null){
                 assetItem.setNote(request.note());
+                assetItem.setNoteTranslations(translationAutoFillService.complete(Map.of("vi", request.note())));
             }
 
             if (request.status() != null)
@@ -191,37 +193,29 @@ public class AssetItemServiceImpl implements AssetItemService {
     public List<AssetItemDto> getAssetItemsByHouseId(UUID houseId) {
         try {
             List<AssetItem> assetItems = assetItemRepository.findByHouseId(houseId);
-
-            List<UUID> assetIds = assetItems.stream()
-                    .map(AssetItem::getId)
-                    .toList();
-
-            List<AssetTag> tags = assetTagRepository
-                    .findByAssetItemIdInAndIsActiveTrue(assetIds);
-
-            Map<UUID, List<AssetTag>> tagMap = tags.stream()
-                    .collect(Collectors.groupingBy(
-                            tag -> tag.getAssetItem().getId()
-                    ));
-
-            return assetItems.stream()
-                    .map(asset -> {
-
-                        AssetItemDto dto = assetMapper.mapAssetItem(asset);
-                        dto.setTags(
-                                assetMapper.tagDtos(
-                                        tagMap.getOrDefault(asset.getId(), List.of())
-                                )
-                        );
-
-                        dto.setImages(getAssetImages(asset.getId()));
-
-                        return dto;
-                    })
-                    .toList();
+            return hydrateAssetItems(assetItems);
 
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset items: " + ex.getMessage());
+        }
+    }
+
+    @Override
+    public List<AssetItemDto> getAssetItemsByHouseIdAndFunctionAreaId(UUID houseId, UUID functionAreaId) {
+        try {
+            List<AssetItem> assetItems = assetItemRepository.findByHouseIdAndFunctionAreaId(houseId, functionAreaId);
+            return hydrateAssetItems(assetItems);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error to get asset items by function area: " + ex.getMessage());
+        }
+    }
+
+    @Override
+    public List<AssetCountByFunctionAreaDto> getAssetCountByFunctionArea(UUID houseId) {
+        try {
+            return assetItemRepository.countByHouseIdGroupByFunctionAreaId(houseId);
+        } catch (Exception ex) {
+            throw new RuntimeException("Error to count asset items by function area: " + ex.getMessage());
         }
     }
     @Transactional
@@ -327,6 +321,28 @@ public class AssetItemServiceImpl implements AssetItemService {
         return imageDto;
     }
 
+    private List<AssetItemDto> hydrateAssetItems(List<AssetItem> assetItems) {
+        List<UUID> assetIds = assetItems.stream()
+                .map(AssetItem::getId)
+                .toList();
+
+        List<AssetTag> tags = assetIds.isEmpty()
+                ? List.of()
+                : assetTagRepository.findByAssetItemIdInAndIsActiveTrue(assetIds);
+
+        Map<UUID, List<AssetTag>> tagMap = tags.stream()
+                .collect(Collectors.groupingBy(tag -> tag.getAssetItem().getId()));
+
+        return assetItems.stream()
+                .map(asset -> {
+                    AssetItemDto dto = assetMapper.mapAssetItem(asset);
+                    dto.setTags(assetMapper.tagDtos(tagMap.getOrDefault(asset.getId(), List.of())));
+                    dto.setImages(getAssetImages(asset.getId()));
+                    return dto;
+                })
+                .toList();
+    }
+
     @Override
     public void deleteAssetImage(UUID assetId, UUID imageId) {
         AssetImage image = assetImageRepository.findById(imageId)
@@ -384,6 +400,7 @@ public class AssetItemServiceImpl implements AssetItemService {
 
                 if (update.note() != null && !update.note().equals(asset.getNote())) {
                     asset.setNote(update.note());
+                    asset.setNoteTranslations(translationAutoFillService.complete(Map.of("vi", update.note())));
                     hasChange = true;
                 }
 

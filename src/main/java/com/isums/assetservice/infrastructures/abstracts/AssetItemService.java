@@ -1,6 +1,7 @@
 package com.isums.assetservice.infrastructures.abstracts;
 
 import com.isums.assetservice.domains.dtos.AssetImageDto;
+import com.isums.assetservice.domains.dtos.AssetCountByFunctionAreaDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.AssetItemDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.CreateAssetItemRequest;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
@@ -26,6 +27,8 @@ public interface AssetItemService {
     Boolean deleteAssetItem(UUID id);
     AssetItemDto getAssetItemById(UUID id);
     List<AssetItemDto> getAssetItemsByHouseId(UUID houseId);
+    List<AssetItemDto> getAssetItemsByHouseIdAndFunctionAreaId(UUID houseId, UUID functionAreaId);
+    List<AssetCountByFunctionAreaDto> getAssetCountByFunctionArea(UUID houseId);
     AssetItemDto updateHouseForAsset(UUID assetId, UpdateHouseRequest request, UUID userId);
     void updateCondition(UUID assetId, Integer conditionScore);
     void  uploadAssetImages(UUID assetId, List<MultipartFile> files);

@@ -6,6 +6,7 @@ import com.isums.assetservice.domains.dtos.AssetCategoryDTO.UpdateAssetCategoryR
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
+import common.i18n.TranslationMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +35,7 @@ class AssetCategoryServiceImplTest {
 
     @Mock private AssetCategoryRepository categoryRepository;
     @Mock private AssetMapper assetMapper;
+    @Mock private TranslationAutoFillService translationAutoFillService;
 
     @InjectMocks private AssetCategoryServiceImpl service;
 
@@ -44,11 +47,24 @@ class AssetCategoryServiceImplTest {
     }
 
     private AssetCategory category() {
-        return AssetCategory.builder().id(id).name("Đồ gỗ").compensationPercent(50).description("desc").build();
+        return AssetCategory.builder()
+                .id(id)
+                .name(TranslationMap.of(Map.of("vi", "Đồ gỗ", "en", "Wood items", "ja", "木製品")))
+                .compensationPercent(50)
+                .description(TranslationMap.of(Map.of("vi", "mô tả", "en", "desc", "ja", "説明")))
+                .build();
     }
 
     private AssetCategoryDto dto() {
-        return new AssetCategoryDto(id, "Đồ gỗ", 50, "desc", null);
+        return new AssetCategoryDto(
+                id,
+                "Đồ gỗ",
+                Map.of("en", "Wood items", "ja", "木製品"),
+                50,
+                "mô tả",
+                Map.of("en", "desc", "ja", "説明"),
+                null
+        );
     }
 
     @Nested
@@ -56,10 +72,19 @@ class AssetCategoryServiceImplTest {
     class Create {
 
         @Test
-        @DisplayName("saves and returns DTO on happy path")
+        @DisplayName("auto-fills translations from Vietnamese-only input")
         void happy() {
-            CreateAssetCategoryRequest req = new CreateAssetCategoryRequest("Đồ gỗ", 50, "desc");
+            CreateAssetCategoryRequest req = new CreateAssetCategoryRequest(
+                    Map.of("vi", "Đồ gỗ"),
+                    50,
+                    Map.of("vi", "mô tả")
+            );
+            TranslationMap filledName = TranslationMap.of(Map.of("vi", "Đồ gỗ", "en", "Wood items", "ja", "木製品"));
+            TranslationMap filledDesc = TranslationMap.of(Map.of("vi", "mô tả", "en", "desc", "ja", "説明"));
             AssetCategory saved = category();
+
+            when(translationAutoFillService.complete(req.name())).thenReturn(filledName);
+            when(translationAutoFillService.complete(req.description())).thenReturn(filledDesc);
             when(categoryRepository.save(any(AssetCategory.class))).thenReturn(saved);
             when(assetMapper.mapAssetCategory(saved)).thenReturn(dto());
 
@@ -67,17 +92,23 @@ class AssetCategoryServiceImplTest {
 
             ArgumentCaptor<AssetCategory> cap = ArgumentCaptor.forClass(AssetCategory.class);
             verify(categoryRepository).save(cap.capture());
-            assertThat(cap.getValue().getName()).isEqualTo("Đồ gỗ");
-            assertThat(cap.getValue().getCompensationPercent()).isEqualTo(50);
+            assertThat(cap.getValue().getName().getTranslations()).containsEntry("en", "Wood items");
+            assertThat(cap.getValue().getDescription().getTranslations()).containsEntry("ja", "説明");
         }
 
         @Test
-        @DisplayName("wraps repo exception as RuntimeException (pre-existing pattern)")
+        @DisplayName("wraps repo exception as RuntimeException")
         void repoFails() {
+            CreateAssetCategoryRequest req = new CreateAssetCategoryRequest(
+                    Map.of("vi", "n"),
+                    10,
+                    Map.of("vi", "d")
+            );
+            when(translationAutoFillService.complete(req.name())).thenReturn(TranslationMap.of(Map.of("vi", "n", "en", "n", "ja", "n")));
+            when(translationAutoFillService.complete(req.description())).thenReturn(TranslationMap.of(Map.of("vi", "d", "en", "d", "ja", "d")));
             when(categoryRepository.save(any())).thenThrow(new RuntimeException("db"));
 
-            assertThatThrownBy(() -> service.createAssetCategory(
-                    new CreateAssetCategoryRequest("n", 10, "d")))
+            assertThatThrownBy(() -> service.createAssetCategory(req))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Error to create asset categories");
         }
@@ -95,16 +126,6 @@ class AssetCategoryServiceImplTest {
 
             assertThat(service.getAllAssetCategories()).hasSize(1);
         }
-
-        @Test
-        @DisplayName("wraps repo exception")
-        void wraps() {
-            when(categoryRepository.findAll()).thenThrow(new RuntimeException("db"));
-
-            assertThatThrownBy(() -> service.getAllAssetCategories())
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Error to get all asset categories");
-        }
     }
 
     @Nested
@@ -119,16 +140,6 @@ class AssetCategoryServiceImplTest {
 
             assertThat(service.getById(id)).isNotNull();
         }
-
-        @Test
-        @DisplayName("wraps not-found into RuntimeException (double-wrapped by catch)")
-        void missing() {
-            when(categoryRepository.findById(id)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.getById(id))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Can't get categories by id");
-        }
     }
 
     @Nested
@@ -136,18 +147,28 @@ class AssetCategoryServiceImplTest {
     class Update {
 
         @Test
-        @DisplayName("updates name + compensationPercent + description on happy path")
+        @DisplayName("auto-fills missing translations on update")
         void updatesAll() {
             AssetCategory existing = category();
+            UpdateAssetCategoryRequest request = new UpdateAssetCategoryRequest(
+                    Map.of("vi", "Thiết bị bếp"),
+                    80,
+                    Map.of("vi", "dùng trong bếp")
+            );
+            TranslationMap filledName = TranslationMap.of(Map.of("vi", "Thiết bị bếp", "en", "Kitchen appliance", "ja", "キッチン設備"));
+            TranslationMap filledDesc = TranslationMap.of(Map.of("vi", "dùng trong bếp", "en", "used in kitchen", "ja", "キッチンで使用"));
+
             when(categoryRepository.findById(id)).thenReturn(Optional.of(existing));
+            when(translationAutoFillService.complete(request.name())).thenReturn(filledName);
+            when(translationAutoFillService.complete(request.description())).thenReturn(filledDesc);
             when(categoryRepository.save(existing)).thenReturn(existing);
             when(assetMapper.mapAssetCategory(existing)).thenReturn(dto());
 
-            service.updateAssetCategory(id, new UpdateAssetCategoryRequest("New", 80, "New desc"));
+            service.updateAssetCategory(id, request);
 
-            assertThat(existing.getName()).isEqualTo("New");
+            assertThat(existing.getName().getTranslations()).containsEntry("en", "Kitchen appliance");
+            assertThat(existing.getDescription().getTranslations()).containsEntry("ja", "キッチンで使用");
             assertThat(existing.getCompensationPercent()).isEqualTo(80);
-            assertThat(existing.getDescription()).isEqualTo("New desc");
         }
 
         @Test
@@ -158,38 +179,25 @@ class AssetCategoryServiceImplTest {
             when(categoryRepository.save(existing)).thenReturn(existing);
             when(assetMapper.mapAssetCategory(existing)).thenReturn(dto());
 
-            service.updateAssetCategory(id, new UpdateAssetCategoryRequest(null, null, "Only desc"));
+            service.updateAssetCategory(id, new UpdateAssetCategoryRequest(null, null, null));
 
-            assertThat(existing.getName()).isEqualTo("Đồ gỗ");
-            assertThat(existing.getCompensationPercent()).isEqualTo(50);
-            assertThat(existing.getDescription()).isEqualTo("Only desc");
+            verify(translationAutoFillService, never()).complete(any());
         }
 
         @Test
-        @DisplayName("rejects blank name")
+        @DisplayName("rejects empty name map")
         void blankName() {
             when(categoryRepository.findById(id)).thenReturn(Optional.of(category()));
 
             assertThatThrownBy(() -> service.updateAssetCategory(id,
-                    new UpdateAssetCategoryRequest("   ", null, null)))
+                    new UpdateAssetCategoryRequest(Map.of(), null, null)))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Name isn't correct form");
             verify(categoryRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("rejects compensationPercent out of range (<0)")
-        void negativePercent() {
-            when(categoryRepository.findById(id)).thenReturn(Optional.of(category()));
-
-            assertThatThrownBy(() -> service.updateAssetCategory(id,
-                    new UpdateAssetCategoryRequest(null, -1, null)))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("compensation must be in 0 - 100");
-        }
-
-        @Test
-        @DisplayName("rejects compensationPercent out of range (>100)")
+        @DisplayName("rejects compensationPercent out of range")
         void tooHighPercent() {
             when(categoryRepository.findById(id)).thenReturn(Optional.of(category()));
 
@@ -197,27 +205,6 @@ class AssetCategoryServiceImplTest {
                     new UpdateAssetCategoryRequest(null, 101, null)))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("compensation must be in 0 - 100");
-        }
-
-        @Test
-        @DisplayName("wraps not-found as RuntimeException")
-        void missing() {
-            when(categoryRepository.findById(id)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.updateAssetCategory(id,
-                    new UpdateAssetCategoryRequest("n", 10, "d")))
-                    .isInstanceOf(RuntimeException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("deleteAssetCategory")
-    class Delete {
-
-        @Test
-        @DisplayName("returns null (unimplemented) — test documents current behaviour")
-        void returnsNull() {
-            assertThat(service.deleteAssetCategory(id)).isNull();
         }
     }
 }

@@ -23,6 +23,18 @@ configurations {
         extendsFrom annotationProcessor
     }
 }
+configurations.configureEach {
+    resolutionStrategy {
+        force 'com.google.protobuf:protobuf-java:4.34.0'
+        force 'com.google.protobuf:protobuf-java-util:4.34.0'
+        eachDependency { details ->
+            if (details.requested.group == 'com.google.protobuf' && (details.requested.name == 'protobuf-java' || details.requested.name == 'protobuf-java-util')) {
+                details.useVersion '4.34.0'
+                details.because 'Keep protobuf runtime aligned with generated proto-common classes'
+            }
+        }
+    }
+}
 
 repositories {
     mavenCentral()
@@ -30,6 +42,14 @@ repositories {
     maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/Management-System-for-Rental-SEP490/ISUMS_Proto-common_gRPC-Maven-local")
+        credentials {
+            username = System.getenv("GITHUB_ACTOR") ?: ""
+            password = System.getenv("GITHUB_TOKEN") ?: ""
+        }
+    }
+    maven {
+        name = "GitHubPackagesObservability"
+        url = uri("https://maven.pkg.github.com/Management-System-for-Rental-SEP490/ISUMS_Observability-Common")
         credentials {
             username = System.getenv("GITHUB_ACTOR") ?: ""
             password = System.getenv("GITHUB_TOKEN") ?: ""
@@ -43,6 +63,12 @@ ext {
 }
 
 dependencies {
+    implementation 'net.logstash.logback:logstash-logback-encoder:8.1'
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'com.isums:isums-observability-common:1.0-SNAPSHOT'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -57,12 +83,13 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation "org.springframework.grpc:spring-grpc-client-spring-boot-starter"
     implementation "org.springframework.grpc:spring-grpc-spring-boot-starter"
-    implementation 'com.google.protobuf:protobuf-java-util:4.33.5'
-    implementation 'com.google.protobuf:protobuf-java:4.34.0-RC2'
+    implementation 'com.google.protobuf:protobuf-java-util:4.34.0'
+    implementation 'com.google.protobuf:protobuf-java:4.34.0'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'software.amazon.awssdk:dynamodb:2.41.30'
     implementation 'software.amazon.awssdk:lambda:2.42.25'
+    implementation 'software.amazon.awssdk:translate:2.42.29'
     implementation "com.isums:proto-common:1.0-SNAPSHOT"
     implementation 'io.awspring.cloud:spring-cloud-aws-starter:4.0.0'
     implementation 'software.amazon.awssdk:iot:2.42.8'

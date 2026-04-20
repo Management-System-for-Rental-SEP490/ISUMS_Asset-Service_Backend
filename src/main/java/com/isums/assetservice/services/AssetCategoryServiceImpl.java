@@ -20,14 +20,15 @@ import java.util.UUID;
 public class AssetCategoryServiceImpl implements AssetCategoryService {
     private final AssetCategoryRepository categoryRepository;
     private final AssetMapper assetMapper;
+    private final TranslationAutoFillService translationAutoFillService;
 
     @Override
     public AssetCategoryDto createAssetCategory(CreateAssetCategoryRequest request) {
         try {
             AssetCategory assetCategory = AssetCategory.builder()
-                    .name(TranslationMap.of(request.name()))
+                    .name(translationAutoFillService.complete(request.name()))
                     .compensationPercent(request.compensationPercent())
-                    .description(TranslationMap.of(request.description()))
+                    .description(translationAutoFillService.complete(request.description()))
                     .build();
 
             AssetCategory created = categoryRepository.save(assetCategory);
@@ -78,13 +79,13 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
             }
 
             if (request.name() != null) {
-                assetCategory.setName(TranslationMap.of(request.name()));
+                assetCategory.setName(translationAutoFillService.complete(request.name()));
             }
             if (request.compensationPercent() != null) {
                 assetCategory.setCompensationPercent(request.compensationPercent());
             }
             if (request.description() != null) {
-                assetCategory.setDescription(TranslationMap.of(request.description()));
+                assetCategory.setDescription(translationAutoFillService.complete(request.description()));
             }
 
             categoryRepository.save(assetCategory);

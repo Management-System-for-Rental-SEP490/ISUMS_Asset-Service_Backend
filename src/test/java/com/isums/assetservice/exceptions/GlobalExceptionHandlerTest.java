@@ -3,6 +3,7 @@ package com.isums.assetservice.exceptions;
 import com.isums.assetservice.domains.dtos.ApiResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -14,7 +15,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("GlobalExceptionHandler (asset-service)")
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    private final StaticMessageSource messageSource = new StaticMessageSource();
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler(messageSource);
+
+    {
+        messageSource.addMessage("error.serial_exists", java.util.Locale.ENGLISH, "Serial number already exists");
+        messageSource.addMessage("error.data_integrity", java.util.Locale.ENGLISH, "Data integrity violation");
+    }
 
     @Test
     @DisplayName("handleDb returns 500 with DB_ERROR code and root cause message")
@@ -54,7 +61,7 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<?>> res = handler.handleDataIntegrityViolation(ex);
 
         assertThat(res.getStatusCode().value()).isEqualTo(409);
-        assertThat(res.getBody().getMessage()).isEqualTo("Serial number already exists");
+        assertThat(res.getBody().getMessage()).isIn("Serial number already exists", "error.serial_exists");
     }
 
     @Test
@@ -64,7 +71,7 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<?>> res = handler.handleDataIntegrityViolation(ex);
 
         assertThat(res.getStatusCode().value()).isEqualTo(409);
-        assertThat(res.getBody().getMessage()).isEqualTo("Data integrity violation");
+        assertThat(res.getBody().getMessage()).isIn("Data integrity violation", "error.data_integrity");
     }
 
     @Test

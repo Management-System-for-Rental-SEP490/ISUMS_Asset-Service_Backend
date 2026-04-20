@@ -1,5 +1,6 @@
 package com.isums.assetservice.domains.dtos.AssetItemDTO;
 
+import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetImageDto;
 import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
@@ -21,9 +22,10 @@ public class AssetItemDto {
     private UUID functionAreaId;
     private UUID houseId;
     private UUID categoryId;
+    private AssetCategoryDto category;
     /** Resolved display name for the request locale (use in list/detail views). */
     private String displayName;
-    /** Full translation map — all locales (use in edit forms). */
+    /** Full translation map  all locales (use in edit forms). */
     private Map<String, String> translations;
     private String serialNumber;
     private int conditionPercent;

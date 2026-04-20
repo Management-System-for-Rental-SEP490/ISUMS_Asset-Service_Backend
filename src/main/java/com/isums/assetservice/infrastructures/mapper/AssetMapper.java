@@ -28,6 +28,13 @@ public interface AssetMapper {
         return tm == null ? null : tm.resolve();
     }
 
+    @Named("resolveText")
+    default String resolveText(String source, TranslationMap tm) {
+        if (tm == null) return source;
+        String resolved = tm.resolve();
+        return resolved != null && !resolved.isBlank() ? resolved : source;
+    }
+
     /**
      * Returns translations for all locales EXCEPT the currently active one,
      * since the resolved value is already exposed as {@code displayName}/{@code name}.
@@ -45,9 +52,11 @@ public interface AssetMapper {
     // ── AssetItem ─────────────────────────────────────────────────────────────
 
     @Mapping(source = "category.id", target = "categoryId")
+    @Mapping(source = "category", target = "category")
     @Mapping(target = "tags", ignore = true)
     @Mapping(target = "images", ignore = true)
     @Mapping(source = "displayName", target = "displayName", qualifiedByName = "resolve")
+    @Mapping(target = "note", expression = "java(resolveText(assetItem.getNote(), assetItem.getNoteTranslations()))")
     @Mapping(source = "displayName", target = "translations", qualifiedByName = "toMap")
     AssetItemDto mapAssetItem(AssetItem assetItem);
 

@@ -9,6 +9,7 @@ import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetEventImageRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetEventRepository;
 import com.isums.assetservice.infrastructures.repositories.AssetImageRepository;
+import common.i18n.TranslationMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -48,13 +49,19 @@ class AssetEventServiceImplTest {
     @BeforeEach
     void setUp() {
         id = UUID.randomUUID();
-        assetItem = AssetItem.builder().id(UUID.randomUUID()).displayName("Cái quạt").build();
+        assetItem = AssetItem.builder()
+                .id(UUID.randomUUID())
+                .displayName(TranslationMap.ofDefault("Cái quạt"))
+                .build();
     }
 
     private AssetEvent event() {
         return AssetEvent.builder()
-                .id(id).eventType(AssetEventType.CREATED)
-                .assetItem(assetItem).createdAt(Instant.now()).build();
+                .id(id)
+                .eventType(AssetEventType.CREATED)
+                .assetItem(assetItem)
+                .createdAt(Instant.now())
+                .build();
     }
 
     private AssetEventDto dto() {
