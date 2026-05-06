@@ -35,6 +35,16 @@ public final class AssetGrpcMapper {
                 .setConditionPercent(item.getConditionPercent())
                 .setStatus(mapStatus(item.getStatus()));
 
+        // Expose the full translation map so downstream services (contract
+        // template rendering) can pick the right locale without a second
+        // round-trip. Empty map if no translations stored.
+        if (item.getDisplayName() != null) {
+            java.util.Map<String, String> trs = item.getDisplayName().getTranslations();
+            if (trs != null && !trs.isEmpty()) {
+                b.putAllTranslations(trs);
+            }
+        }
+
         if (item.getCategory() != null) {
             b.setCategory(toCategoryDto(item.getCategory()));
         }
@@ -124,7 +134,8 @@ public final class AssetGrpcMapper {
      */
     private static String resolveTranslation(TranslationMap tm) {
         if (tm == null) return "";
-        return tm.resolve();
+        String resolved = tm.resolve();
+        return resolved == null ? "" : resolved;
     }
 
     private static String str(String v) { return v == null ? "" : v; }

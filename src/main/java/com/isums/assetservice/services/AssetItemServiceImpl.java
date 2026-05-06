@@ -5,6 +5,7 @@ import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
 import com.isums.assetservice.domains.dtos.AssetItemDTO.UpdateHouseRequest;
 import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
 import com.isums.assetservice.domains.entities.*;
+import com.isums.assetservice.domains.enums.AssetEventImageType;
 import com.isums.assetservice.domains.enums.AssetEventType;
 import com.isums.assetservice.exceptions.NotFoundException;
 import com.isums.assetservice.infrastructures.abstracts.AssetItemService;
@@ -62,7 +63,6 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final TranslationAutoFillService translationAutoFillService;
 
     private static final String PAGE_NS = "assets";
-
     @Override
     public AssetItemDto CreateAssetItem(CreateAssetItemRequest request) {
         try {
@@ -113,7 +113,6 @@ public class AssetItemServiceImpl implements AssetItemService {
             AssetItem assetItem = assetItemRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Id not found"));
 
-
             if (request.conditionPercent() != null) {
                 if (request.conditionPercent() < 0 || request.conditionPercent() > 100) {
                     throw new RuntimeException("condition must be in 0-100");                }
@@ -155,7 +154,6 @@ public class AssetItemServiceImpl implements AssetItemService {
             AssetItem assetItem = assetItemRepository.findById(id)
                     .orElseThrow(()-> new RuntimeException("Id not found"));
 
-
             assetItem.setStatus(AssetStatus.DISPOSED);
 
             assetItemRepository.save(assetItem);
@@ -182,7 +180,6 @@ public class AssetItemServiceImpl implements AssetItemService {
             dto.setImages(getAssetImages(id));
 
             return dto;
-
 
         } catch (Exception ex) {
             throw new RuntimeException("Error to get asset item: " + ex.getMessage());
@@ -275,6 +272,21 @@ public class AssetItemServiceImpl implements AssetItemService {
                         .createdAt(Instant.now())
                         .build()
         );
+
+        List<AssetImage> currentAssetImages = assetImageRepository.findByAssetItemId(assetId);
+        for (AssetImage prev : currentAssetImages) {
+            assetEventImageRepository.save(
+                    AssetEventImage.builder()
+                            .event(event)
+                            .key(prev.getKey())
+                            .type(com.isums.assetservice.domains.enums.AssetEventImageType.BEFORE)
+                            .createdAt(prev.getCreatedAt() != null ? prev.getCreatedAt() : Instant.now())
+                            .build()
+            );
+        }
+
+        assetImageRepository.deleteAll(currentAssetImages);
+
         List<AssetImageDto> imageDtos = new ArrayList<>();
 
         for (MultipartFile file : files) {
@@ -293,6 +305,7 @@ public class AssetItemServiceImpl implements AssetItemService {
                     AssetEventImage.builder()
                             .event(event)
                             .key(key)
+                            .type(com.isums.assetservice.domains.enums.AssetEventImageType.AFTER)
                             .createdAt(Instant.now())
                             .build()
             );
@@ -415,7 +428,6 @@ public class AssetItemServiceImpl implements AssetItemService {
                     }
                 }
 
-                // 👉 CREATE EVENT
                 if (hasChange) {
                     AssetEvent event = AssetEvent.builder()
                             .eventType(AssetEventType.MAINTENANCE)
@@ -429,6 +441,7 @@ public class AssetItemServiceImpl implements AssetItemService {
                             .build();
 
                     AssetEvent savedEvent = assetEventRepository.save(event);
+                    snapshotCurrentImagesForMaintenance(savedEvent);
 
                     results.add(new BatchUpdateResponse.EventResult(
                             asset.getId(),
@@ -442,11 +455,38 @@ public class AssetItemServiceImpl implements AssetItemService {
             return new BatchUpdateResponse(
                     request.updates().size(),
                     assets.size(),
-                    results   // 🔥 TRẢ EVENT ID CHO FE
+                    results
             );
 
         } catch (Exception ex) {
             throw new RuntimeException("Error batch update asset: " + ex.getMessage());
+        }
+    }
+
+    private void snapshotCurrentImagesForMaintenance(AssetEvent maintenanceEvent) {
+        if (maintenanceEvent.getAssetItem() == null) {
+            return;
+        }
+
+        UUID assetId = maintenanceEvent.getAssetItem().getId();
+        List<AssetImage> currentImages = assetImageRepository.findByAssetItemId(assetId);
+
+        if (currentImages.isEmpty()) {
+            return;
+        }
+
+        List<AssetEventImage> snapshots = currentImages.stream()
+                .filter(image -> image.getKey() != null)
+                .map(image -> AssetEventImage.builder()
+                        .event(maintenanceEvent)
+                        .key(image.getKey())
+                        .type(AssetEventImageType.BEFORE)
+                        .createdAt(image.getCreatedAt() != null ? image.getCreatedAt() : Instant.now())
+                        .build())
+                .toList();
+
+        if (!snapshots.isEmpty()) {
+            assetEventImageRepository.saveAll(snapshots);
         }
     }
 
@@ -550,7 +590,6 @@ public class AssetItemServiceImpl implements AssetItemService {
                 })
                 .toList();
 
-
         return PageResponse.of(
                 dtos,
                 page.hasNext(),
@@ -566,3 +605,4 @@ public class AssetItemServiceImpl implements AssetItemService {
     }
 
 }
+

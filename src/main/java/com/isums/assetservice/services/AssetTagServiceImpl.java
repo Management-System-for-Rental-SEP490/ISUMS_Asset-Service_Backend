@@ -35,7 +35,6 @@ public class AssetTagServiceImpl implements AssetTagService {
     private final AssetMapper assetMapper;
     private final S3ServiceImpl s3;
 
-
     @Override
     public AssetTagDto attachTag(AttachTagRequest request) {
         try{
@@ -74,7 +73,6 @@ public class AssetTagServiceImpl implements AssetTagService {
             assetTagLogRepository.save(log);
 
             return assetMapper.tagDto(created);
-
 
         } catch (Exception ex) {
             throw new RuntimeException("Error to attach tag" + ex.getMessage());
@@ -132,7 +130,6 @@ public class AssetTagServiceImpl implements AssetTagService {
                 throw new RuntimeException("Tag already attached to this asset");
             }
 
-            //deactivated tag cũ
             currentTag.setIsActive(false);
             currentTag.setDeactivatedAt(Instant.now());
             assetTagRepository.save(currentTag);
@@ -142,7 +139,6 @@ public class AssetTagServiceImpl implements AssetTagService {
                 throw new RuntimeException("Asset already has active tag of this type");
             }
 
-            //attach tag mới
             AssetTag newTag = AssetTag.builder()
                     .tagValue(currentTag.getTagValue())
                     .tagType(currentTag.getTagType())
@@ -153,7 +149,6 @@ public class AssetTagServiceImpl implements AssetTagService {
 
             assetTagRepository.save(newTag);
 
-            //log new tag
             AssetTagLog newTagLog = AssetTagLog.builder()
                     .tagValue(newTag.getTagValue())
                     .tagAction(TagAction.TRANSFERRED)
@@ -214,3 +209,4 @@ public class AssetTagServiceImpl implements AssetTagService {
         return imageDto;
     }
 }
+

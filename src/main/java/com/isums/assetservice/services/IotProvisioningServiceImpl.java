@@ -94,6 +94,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             }
         }
 
+        validateAreaBelongsToHouse(houseId, areaId);
+
         String thingName = "ctrl-" + deviceId.replace(":", "").toLowerCase();
         try {
             iotClient.createThing(r -> r.thingName(thingName));
@@ -249,6 +251,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
         AssetItem asset = device.getAssetItem();
         UUID houseId = asset.getHouseId();
+        validateAreaBelongsToHouse(houseId, areaId);
         asset.setFunctionAreaId(areaId);
         assetItemRepository.save(asset);
 
@@ -267,6 +270,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             log.warn("Invalid token for serial={}", serial);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
         }
+
+        validateAreaBelongsToHouse(houseId, areaId);
 
         ioTDeviceRepository.findBySerialNumber(serial).ifPresent(d -> {
             throw new ConflictException("Node " + serial + " already provisioned");
@@ -562,6 +567,24 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     private String extractCertId(String arn) {
         return arn.substring(arn.lastIndexOf("/") + 1);
+    }
+
+    private void validateAreaBelongsToHouse(UUID houseId, UUID areaId) {
+        if (areaId == null) {
+            return;
+        }
+
+        boolean belongsToHouse = houseGrpc.getHouseById(houseId)
+                .getFunctionalAreasList()
+                .stream()
+                .anyMatch(area -> area.getId().equals(areaId.toString()));
+
+        if (!belongsToHouse) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Area " + areaId + " does not belong to house " + houseId
+            );
+        }
     }
 
     private String getAreaName(UUID houseId, UUID areaId) {

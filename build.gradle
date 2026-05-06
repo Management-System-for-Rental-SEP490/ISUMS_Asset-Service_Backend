@@ -47,14 +47,6 @@ repositories {
             password = System.getenv("GITHUB_TOKEN") ?: ""
         }
     }
-    maven {
-        name = "GitHubPackagesObservability"
-        url = uri("https://maven.pkg.github.com/Management-System-for-Rental-SEP490/ISUMS_Observability-Common")
-        credentials {
-            username = System.getenv("GITHUB_ACTOR") ?: ""
-            password = System.getenv("GITHUB_TOKEN") ?: ""
-        }
-    }
 }
 
 ext {
@@ -144,3 +136,5 @@ tasks.named('bootBuildImage') {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }

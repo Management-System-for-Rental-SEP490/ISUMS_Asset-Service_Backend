@@ -8,7 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.UUID;
 
 @Entity
 @Table(name = "assetEvents")
@@ -35,6 +35,10 @@ public class AssetEvent {
     @Column(columnDefinition = "text")
     private String note;
 
+    @Column(name = "note_translations", columnDefinition = "text")
+    @Convert(converter = com.isums.common.i18n.TranslationMapConverter.class)
+    private com.isums.common.i18n.TranslationMap noteTranslations;
+
     @CreationTimestamp
     private Instant createdAt;
 
@@ -48,4 +52,3 @@ public class AssetEvent {
     private AssetItem assetItem;
 
 }
-

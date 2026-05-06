@@ -84,6 +84,7 @@ public interface AssetMapper {
 
     @Mapping(source = "assetItem.id", target = "assetId")
     @Mapping(source = "assetItem.displayName", target = "assetName", qualifiedByName = "resolve")
+    @Mapping(target = "oldImages", ignore = true)
     @Mapping(target = "images", ignore = true)
     AssetEventDto mapAssetEvent(AssetEvent assetEvent);
 
