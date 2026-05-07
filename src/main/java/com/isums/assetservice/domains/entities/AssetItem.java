@@ -1,8 +1,11 @@
 package com.isums.assetservice.domains.entities;
 
 import com.isums.assetservice.domains.enums.AssetStatus;
+import common.i18n.TranslationMap;
+import common.i18n.TranslationMapConverter;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -37,7 +40,8 @@ public class AssetItem {
     private AssetCategory category;
 
     @Column(name = "display_name", columnDefinition = "text")
-    private String displayName;
+    @Convert(converter = TranslationMapConverter.class)
+    private TranslationMap displayName;
 
     @Column(name = "serial_number", columnDefinition = "text")
     private String serialNumber;
@@ -47,8 +51,15 @@ public class AssetItem {
 
     private String note;
 
+    @Column(name = "note_translations", columnDefinition = "text")
+    @Convert(converter = TranslationMapConverter.class)
+    private TranslationMap noteTranslations;
+
     @UpdateTimestamp
     private Instant updateAt;
+
+    @CreationTimestamp
+    private Instant createdAt;
 
     @Enumerated(EnumType.STRING)
     private AssetStatus status;

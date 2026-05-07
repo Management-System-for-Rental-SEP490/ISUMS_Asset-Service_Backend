@@ -19,7 +19,6 @@ import com.isums.houseservice.grpc.HouseResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -76,7 +75,8 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
             return;
         }
 
-        String houseId = asset.getHouseId().toString();
+        UUID houseUuid = asset.getHouseId();
+        String houseId = houseUuid.toString();
         String categoryCode = asset.getCategory().getCode();
         UUID areaId = asset.getFunctionAreaId();
 
@@ -92,12 +92,23 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
         if (areaId != null) {
             item.put("areaId", av(areaId.toString()));
         }
-
-        if (areaId != null) {
-            item.put("areaId", av(areaId.toString()));
-        }
         if (areaName != null) {
             item.put("areaName", av(areaName));
+        }
+
+        // Denormalise the tenant user id so esp32-threshold-checker /
+        // esp32-eif-score can route multi-channel notifications without a
+        // second service hop. HouseResponse.user_rental_id is the current
+        // renter despite the name suggesting otherwise (see house.proto).
+        // When the house has no active tenant yet the Lambda silently
+        // skips external channels (push WS still fires).
+        try {
+            HouseResponse house = houseGrpc.getHouseById(houseUuid);
+            if (house.getUserRentalId() != null && !house.getUserRentalId().isBlank()) {
+                item.put("tenantUserId", av(house.getUserRentalId()));
+            }
+        } catch (Exception e) {
+            log.warn("Failed to resolve tenantUserId houseId={}: {}", houseId, e.getMessage());
         }
 
         Set<String> capabilities = device.getCapabilities();
@@ -112,7 +123,8 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 .item(item)
                 .build());
 
-        log.info("Synced node {} to DynamoDB houseId={} areaId={}", thing, houseId, areaId);
+        log.info("Synced node {} to DynamoDB houseId={} areaId={} tenantPresent={}",
+                thing, houseId, areaId, item.containsKey("tenantUserId"));
     }
 
     private AttributeValue av(String v) {
@@ -143,6 +155,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 .orElseThrow(() -> new NotFoundException("IoT controller not found for house: " + houseId));
 
         HouseResponse house = houseGrpc.getHouseById(houseId);
+        log.info("=== got house: {}", house.getName());
 
         String areaName = null;
         if (controller.getAreaId() != null) {
@@ -152,6 +165,7 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
         }
 
         IotControllerDto controllerDto = ioTControllerMapper.toIotControllerDto(controller);
+        log.info("=== mapped controller");
         controllerDto.setAreaName(areaName);
         controllerDto.setHouseName(house.getName());
 
@@ -162,8 +176,10 @@ public class IoTDeviceServiceImpl implements IoTDeviceService {
                 ));
 
         List<IoTDevice> devices = iotDeviceRepository.findByAssetItem_HouseId(houseId);
+        log.info("=== got devices: {}", devices.size());
 
         List<IoTDeviceMapControllerDto> deviceDtos = ioTDeviceMapper.toIoTDeviceMapControllerDtoList(devices, areaNameMap);
+        log.info("=== mapped devices");
         controllerDto.setDevices(deviceDtos);
 
         return controllerDto;

@@ -1,12 +1,11 @@
 package com.isums.assetservice.domains.dtos.AssetCategoryDTO;
 
-import jakarta.persistence.Column;
+import java.util.Map;
 
-import java.util.UUID;
+public record CreateAssetCategoryRequest(
+        Map<String, String> name,
+        int compensationPercent,
+        Map<String, String> description
+) {
+}
 
-public record CreateAssetCategoryRequest (
-     String name,
-     int compensationPercent,
-     String description
-){
-    }

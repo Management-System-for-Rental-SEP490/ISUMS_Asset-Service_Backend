@@ -2,10 +2,7 @@ package com.isums.assetservice.domains.entities;
 
 import com.isums.assetservice.domains.enums.AssetEventType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
@@ -31,8 +28,16 @@ public class AssetEvent {
     @Enumerated(EnumType.STRING)
     private AssetEventType eventType;
 
+    private Integer previousCondition;
+
+    private Integer currentCondition;
+
     @Column(columnDefinition = "text")
-    private String description;
+    private String note;
+
+    @Column(name = "note_translations", columnDefinition = "text")
+    @Convert(converter = com.isums.common.i18n.TranslationMapConverter.class)
+    private com.isums.common.i18n.TranslationMap noteTranslations;
 
     @CreationTimestamp
     private Instant createdAt;
@@ -42,8 +47,8 @@ public class AssetEvent {
 
     private UUID createBy;
 
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "asset_id")
     private AssetItem assetItem;
+
 }

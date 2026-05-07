@@ -7,6 +7,9 @@ import com.isums.assetservice.domains.dtos.ThresholdResponse;
 import com.isums.assetservice.services.IotThresholdService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,19 +21,28 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class IotAreaThresholdController {
     private final IotThresholdService thresholdService;
+    private final MessageSource messageSource;
+
+    private String msg(String code) {
+        try {
+            return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
+        } catch (NoSuchMessageException e) {
+            return code;
+        }
+    }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('LANDLORD','ADMIN', 'TENANT')")
     public ApiResponse<List<ThresholdResponse>> getAll(@PathVariable UUID houseId, @PathVariable UUID areaId) {
         var res = thresholdService.getAllByArea(areaId);
-        return ApiResponses.ok(res, "Success to get thresholds");
+        return ApiResponses.ok(res, msg("iot.threshold_get"));
     }
 
     @PutMapping("/{metric}")
     @PreAuthorize("hasAnyRole('LANDLORD','ADMIN', 'TENANT')")
     public ApiResponse<ThresholdResponse> upsert(@PathVariable UUID houseId, @PathVariable UUID areaId, @PathVariable String metric, @Valid @RequestBody ThresholdRequest req) {
         var res = thresholdService.upsertAreaLevel(houseId, areaId, metric, req);
-        return ApiResponses.ok(res, "Success to upsert threshold");
+        return ApiResponses.ok(res, msg("iot.threshold_upsert"));
     }
 
     @DeleteMapping("/{metric}")

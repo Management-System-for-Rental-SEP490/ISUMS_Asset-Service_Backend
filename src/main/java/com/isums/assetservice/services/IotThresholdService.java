@@ -41,8 +41,8 @@ public class IotThresholdService {
                 build(houseId, null, "w_lpm", null, 50.0, "CRITICAL"),
                 build(houseId, null, "d_w_tot", null, 100.0, "WARNING"),
                 build(houseId, null, "gas_ppm", null, 300.0, "CRITICAL"),
-                build(houseId, null, "temperature", null, 45.0, "WARNING"),
-                build(houseId, null, "humidity", null, 90.0, "INFO")
+                build(houseId, null, "temperature", null, 80.0, "CRITICAL"),
+                build(houseId, null, "humidity", null, 90.0, "WARNING")
         );
 
         defaults.stream()

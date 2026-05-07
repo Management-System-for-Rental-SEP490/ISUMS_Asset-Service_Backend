@@ -1,16 +1,17 @@
 package com.isums.assetservice.domains.dtos.AssetItemDTO;
 
+import com.isums.assetservice.domains.dtos.AssetCategoryDTO.AssetCategoryDto;
 import com.isums.assetservice.domains.dtos.AssetEventDTO.AssetEventDto;
-import com.isums.assetservice.domains.dtos.AssetImageDTO.AssetImageDto;
-import com.isums.assetservice.domains.entities.AssetCategory;
+import com.isums.assetservice.domains.dtos.AssetImageDto;
+import com.isums.assetservice.domains.dtos.AssetTagDto.AssetTagDto;
 import com.isums.assetservice.domains.enums.AssetStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -21,14 +22,16 @@ public class AssetItemDto {
     private UUID functionAreaId;
     private UUID houseId;
     private UUID categoryId;
+    private AssetCategoryDto category;
+    /** Resolved display name for the request locale (use in list/detail views). */
     private String displayName;
+    /** Full translation map  all locales (use in edit forms). */
+    private Map<String, String> translations;
     private String serialNumber;
     private int conditionPercent;
     private AssetStatus status;
     private String note;
     private Instant updateAt;
-    private String nfcTag;
-    private String qrTag;
-//    private List<AssetImageDto> images;
-//    private List<AssetEventDto> events;
+    private List<AssetTagDto> tags;
+    private List<AssetImageDto> images;
 }

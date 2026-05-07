@@ -7,6 +7,7 @@ import com.isums.assetservice.domains.dtos.AssetCategoryDTO.UpdateAssetCategoryR
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.infrastructures.mapper.AssetMapper;
 import com.isums.assetservice.infrastructures.repositories.AssetCategoryRepository;
+import common.i18n.TranslationMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -19,14 +20,15 @@ import java.util.UUID;
 public class AssetCategoryServiceImpl implements AssetCategoryService {
     private final AssetCategoryRepository categoryRepository;
     private final AssetMapper assetMapper;
+    private final TranslationAutoFillService translationAutoFillService;
 
     @Override
     public AssetCategoryDto createAssetCategory(CreateAssetCategoryRequest request) {
         try {
             AssetCategory assetCategory = AssetCategory.builder()
-                    .name(request.name())
+                    .name(translationAutoFillService.complete(request.name()))
                     .compensationPercent(request.compensationPercent())
-                    .description(request.description())
+                    .description(translationAutoFillService.complete(request.description()))
                     .build();
 
             AssetCategory created = categoryRepository.save(assetCategory);
@@ -62,13 +64,14 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
     public AssetCategoryDto updateAssetCategory(UUID id, UpdateAssetCategoryRequest request) {
         try {
             AssetCategory assetCategory = categoryRepository.findById(id)
-                    .orElseThrow(()-> new RuntimeException("Id not found"));
-            //Validation name
-            if (request.name() != null && request.name().isBlank()) {
+                    .orElseThrow(() -> new RuntimeException("Id not found"));
+
+            // Validate: non-null name map must not be empty
+            if (request.name() != null && request.name().isEmpty()) {
                 throw new RuntimeException("Name isn't correct form");
             }
 
-            //Validation CompensationPercent
+            // Validate compensationPercent range
             if (request.compensationPercent() != null) {
                 if (request.compensationPercent() < 0 || request.compensationPercent() > 100) {
                     throw new RuntimeException("compensation must be in 0 - 100");
@@ -76,24 +79,20 @@ public class AssetCategoryServiceImpl implements AssetCategoryService {
             }
 
             if (request.name() != null) {
-                assetCategory.setName(request.name());
-
+                assetCategory.setName(translationAutoFillService.complete(request.name()));
             }
             if (request.compensationPercent() != null) {
                 assetCategory.setCompensationPercent(request.compensationPercent());
-
             }
             if (request.description() != null) {
-                assetCategory.setDescription(request.description());
-
+                assetCategory.setDescription(translationAutoFillService.complete(request.description()));
             }
 
-            AssetCategory updated = categoryRepository.save(assetCategory);
+            categoryRepository.save(assetCategory);
             return assetMapper.mapAssetCategory(assetCategory);
 
-
         } catch (Exception ex) {
-            throw new RuntimeException("Error to update asset item: " + ex.getMessage());
+            throw new RuntimeException("Error to update asset category: " + ex.getMessage());
         }
     }
 

@@ -11,7 +11,9 @@ import com.isums.assetservice.grpc.AssetCategoryDto;
 import com.isums.assetservice.grpc.AssetEventDto;
 import com.isums.assetservice.grpc.AssetItemDto;
 import com.isums.assetservice.grpc.*;
+import common.i18n.TranslationMap;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -28,10 +30,20 @@ public final class AssetGrpcMapper {
         AssetItemDto.Builder b = AssetItemDto.newBuilder()
                 .setId(uuid(item.getId()))
                 .setHouseId(uuid(item.getHouseId()))
-                .setDisplayName(str(item.getDisplayName()))
+                .setDisplayName(resolveTranslation(item.getDisplayName()))
                 .setSerialNumber(str(item.getSerialNumber()))
                 .setConditionPercent(item.getConditionPercent())
                 .setStatus(mapStatus(item.getStatus()));
+
+        // Expose the full translation map so downstream services (contract
+        // template rendering) can pick the right locale without a second
+        // round-trip. Empty map if no translations stored.
+        if (item.getDisplayName() != null) {
+            java.util.Map<String, String> trs = item.getDisplayName().getTranslations();
+            if (trs != null && !trs.isEmpty()) {
+                b.putAllTranslations(trs);
+            }
+        }
 
         if (item.getCategory() != null) {
             b.setCategory(toCategoryDto(item.getCategory()));
@@ -55,9 +67,9 @@ public final class AssetGrpcMapper {
     private AssetCategoryDto toCategoryDto(AssetCategory c) {
         return AssetCategoryDto.newBuilder()
                 .setId(uuid(c.getId()))
-                .setName(str(c.getName()))
+                .setName(resolveTranslation(c.getName()))
                 .setCompensationPercent(c.getCompensationPercent())
-                .setDescription(str(c.getDescription()))
+                .setDescription(resolveTranslation(c.getDescription()))
                 .build();
     }
 
@@ -73,7 +85,7 @@ public final class AssetGrpcMapper {
         return AssetEventDto.newBuilder()
                 .setId(uuid(e.getId()))
                 .setEventType(mapEventType(e.getEventType()))
-                .setDescription(str(e.getDescription()))
+                .setDescription(str(e.getNote()))
                 .setCreatedAt(ts(e.getCreatedAt()))
                 .setCreatedBy(uuid(e.getCreateBy()))
                 .build();
@@ -88,6 +100,7 @@ public final class AssetGrpcMapper {
         return switch (s) {
 
             case AVAILABLE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_AVAILABLE;
+            case WAITING_MANAGER_CONFIRM -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_WAITING_MANAGER_CONFIRM;
             case IN_USE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_IN_USE;
             case ACTIVE -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_UNSPECIFIED;
             case BROKEN -> com.isums.assetservice.grpc.AssetStatus.ASSET_STATUS_BROKEN;
@@ -112,6 +125,17 @@ public final class AssetGrpcMapper {
             case TRANSFERRED -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_TRANSFERRED;
             case MAINTENANCE -> com.isums.assetservice.grpc.AssetEventType.ASSET_EVENT_TYPE_MAINTENANCE;
         };
+    }
+
+    /**
+     * Resolve a TranslationMap to a plain string for gRPC responses.
+     * gRPC calls may have no HTTP request context, so we use the locale from
+     * LocaleContextHolder if available, falling back to the "vi" default.
+     */
+    private static String resolveTranslation(TranslationMap tm) {
+        if (tm == null) return "";
+        String resolved = tm.resolve();
+        return resolved == null ? "" : resolved;
     }
 
     private static String str(String v) { return v == null ? "" : v; }

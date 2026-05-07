@@ -44,6 +44,13 @@ public class IotController {
     @Column(name = "activated_at")
     private Instant activatedAt;
 
+    @Column(name = "payment_cut_active", nullable = false)
+    @Builder.Default
+    private boolean paymentCutActive = false;
+
+    @Column(name = "active_payment_cut_job_id")
+    private UUID activePaymentCutJobId;
+
     @PrePersist
     void prePersist() { createdAt = Instant.now(); }
 }

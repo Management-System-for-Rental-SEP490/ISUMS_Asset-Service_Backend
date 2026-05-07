@@ -19,9 +19,12 @@ public interface IotProvisioningService {
 
     void assignNodeToArea(String thing, UUID areaId);
 
-    NodeProvisionResponse provisionNode(UUID houseId, String serial, String token, UUID areaId);
+    NodeProvisionResponse provisionNode(UUID houseId, String serial, String token,
+                                        UUID areaId, Set<NodeCapability> capabilities);
 
     void updateNodeCapabilities(String thing, Set<NodeCapability> capabilities);
+
+    void syncNodeCapabilitiesIfEmpty(String thing, Set<String> capabilities);
 
     PagedResponse<AlertDto> getAlerts(UUID houseId, int limit, String cursor, String date, Severity level);
 
@@ -32,4 +35,6 @@ public interface IotProvisioningService {
     OtaJobResponse triggerOta(UUID houseId, OtaRequest req);
 
     OtaStatusResponse getOtaStatus(UUID houseId, String jobId);
+
+    void sendPowerCutCommand(UUID houseId);
 }

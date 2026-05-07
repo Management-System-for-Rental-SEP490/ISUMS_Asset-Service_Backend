@@ -3,6 +3,7 @@ package com.isums.assetservice.services;
 import com.isums.assetservice.domains.dtos.*;
 import com.isums.assetservice.domains.entities.AssetCategory;
 import com.isums.assetservice.domains.entities.AssetItem;
+import common.i18n.TranslationMap;
 import com.isums.assetservice.domains.entities.IoTDevice;
 import com.isums.assetservice.domains.entities.IotController;
 import com.isums.assetservice.domains.enums.AssetStatus;
@@ -18,7 +19,7 @@ import com.isums.assetservice.infrastructures.repositories.AssetItemRepository;
 import com.isums.assetservice.infrastructures.repositories.IoTDeviceRepository;
 import com.isums.assetservice.infrastructures.repositories.IotControllerRepository;
 import com.isums.houseservice.grpc.FunctionalAreaResponse;
-import jakarta.ws.rs.NotFoundException;
+import com.isums.assetservice.exceptions.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -92,6 +93,8 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                         "Device " + deviceId + " already provisioned for house " + ctrl.getHouseId());
             }
         }
+
+        validateAreaBelongsToHouse(houseId, areaId);
 
         String thingName = "ctrl-" + deviceId.replace(":", "").toLowerCase();
         try {
@@ -248,6 +251,7 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
         AssetItem asset = device.getAssetItem();
         UUID houseId = asset.getHouseId();
+        validateAreaBelongsToHouse(houseId, areaId);
         asset.setFunctionAreaId(areaId);
         assetItemRepository.save(asset);
 
@@ -260,11 +264,14 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
     @Override
     @Transactional
-    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token, UUID areaId) {
+    public NodeProvisionResponse provisionNode(UUID houseId, String serial, String token,
+                                                UUID areaId, Set<NodeCapability> capabilities) {
         if (!iotNodeTokenService.isTokenValid(serial, token)) {
             log.warn("Invalid token for serial={}", serial);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
         }
+
+        validateAreaBelongsToHouse(houseId, areaId);
 
         ioTDeviceRepository.findBySerialNumber(serial).ifPresent(d -> {
             throw new ConflictException("Node " + serial + " already provisioned");
@@ -286,17 +293,22 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
                     .houseId(houseId)
                     .functionAreaId(areaId)
                     .category(category)
-                    .displayName("Node " + serial.substring(Math.max(0, serial.length() - 8)))
+                    .displayName(TranslationMap.ofDefault("Node " + serial.substring(Math.max(0, serial.length() - 8))))
                     .serialNumber(serial)
                     .conditionPercent(100)
                     .status(AssetStatus.IN_USE)
                     .build();
             AssetItem savedAsset = assetItemRepository.save(assetItem);
 
+            Set<String> capStrings = (capabilities != null && !capabilities.isEmpty())
+                    ? capabilities.stream().map(Enum::name).collect(Collectors.toSet())
+                    : new HashSet<>();
+
             IoTDevice device = IoTDevice.builder()
                     .thing(serial)
                     .serialNumber(serial)
                     .assetItem(savedAsset)
+                    .capabilities(capStrings)
                     .build();
             IoTDevice savedDevice = ioTDeviceRepository.save(device);
 
@@ -345,6 +357,28 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
 
         ioTDeviceService.upsetToDynamoDB(device, areaName);
         log.info("Updated capabilities thing={} caps={}", thing, capabilities);
+    }
+
+    @Override
+    @Transactional
+    public void syncNodeCapabilitiesIfEmpty(String thing, Set<String> capabilities) {
+        IoTDevice device = ioTDeviceRepository.findByThing(thing).orElse(null);
+        if (device == null) {
+            log.warn("syncNodeCapabilities: device not found thing={}", thing);
+            return;
+        }
+        if (!device.getCapabilities().isEmpty()) {
+            log.debug("syncNodeCapabilities: skip thing={} already has caps={}", thing, device.getCapabilities());
+            return;
+        }
+        device.setCapabilities(capabilities);
+        ioTDeviceRepository.save(device);
+
+        UUID houseId = device.getAssetItem().getHouseId();
+        UUID areaId  = device.getAssetItem().getFunctionAreaId();
+        String areaName = getAreaName(houseId, areaId);
+        ioTDeviceService.upsetToDynamoDB(device, areaName);
+        log.info("syncNodeCapabilities: thing={} caps={}", thing, capabilities);
     }
 
     @Override
@@ -498,9 +532,9 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
             Map<String, AttributeValue> item = result.item();
             return new OtaStatusResponse(
                     jobId,
-                    item.getOrDefault("status",   av("PENDING")).s(),
-                    item.containsKey("progress")  ? Integer.parseInt(item.get("progress").n()) : null,
-                    item.containsKey("error")     ? item.get("error").s() : null,
+                    item.getOrDefault("status", av("PENDING")).s(),
+                    item.containsKey("progress") ? Integer.parseInt(item.get("progress").n()) : null,
+                    item.containsKey("error") ? item.get("error").s() : null,
                     item.containsKey("updatedAt") ? Long.parseLong(item.get("updatedAt").n()) : 0L
             );
         } catch (ResponseStatusException e) {
@@ -511,8 +545,46 @@ public class IotProvisioningServiceImpl implements IotProvisioningService {
         }
     }
 
+    @Override
+    public void sendPowerCutCommand(UUID houseId) {
+        IotController ctrl = controllerRepository.findByHouseId(houseId)
+                .orElseThrow(() -> new NotFoundException("No controller for house " + houseId));
+
+        String topic = "esp32/" + ctrl.getThingName() + "/cmd";
+        Map<String, Object> payload = Map.of("cmd", "POWER_CUT");
+
+        try {
+            iotDataPlaneClient.publish(r -> r
+                    .topic(topic)
+                    .qos(1)
+                    .payload(SdkBytes.fromUtf8String(objectMapper.writeValueAsString(payload)))
+                    .build());
+            log.info("[IoT] PowerCut command sent houseId={} topic={}", houseId, topic);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send power cut command: " + e.getMessage(), e);
+        }
+    }
+
     private String extractCertId(String arn) {
         return arn.substring(arn.lastIndexOf("/") + 1);
+    }
+
+    private void validateAreaBelongsToHouse(UUID houseId, UUID areaId) {
+        if (areaId == null) {
+            return;
+        }
+
+        boolean belongsToHouse = houseGrpc.getHouseById(houseId)
+                .getFunctionalAreasList()
+                .stream()
+                .anyMatch(area -> area.getId().equals(areaId.toString()));
+
+        if (!belongsToHouse) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Area " + areaId + " does not belong to house " + houseId
+            );
+        }
     }
 
     private String getAreaName(UUID houseId, UUID areaId) {
