@@ -8,9 +8,14 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface AssetItemRepository extends JpaRepository<AssetItem, UUID>, JpaSpecificationExecutor<AssetItem> {
+
+    @Override
+    @EntityGraph(attributePaths = {"category", "images", "events"})
+    Optional<AssetItem> findById(UUID id);
 
     @EntityGraph(attributePaths = {"category", "images", "events"})
     List<AssetItem> findByHouseId(UUID houseId);

@@ -23,6 +23,52 @@ public class AssetGrpcImpl extends AssetServiceGrpc.AssetServiceImplBase {
 
     @Override
     @Transactional(readOnly = true)
+    public void getAssetById(GetAssetByIdRequest request,
+                             StreamObserver<AssetItemDto> responseObserver) {
+        try {
+            String raw = request.getAssetId();
+            if (raw == null || raw.isBlank()) {
+                responseObserver.onError(
+                        Status.INVALID_ARGUMENT.withDescription("asset_id is required").asRuntimeException()
+                );
+                return;
+            }
+
+            UUID assetId;
+            try {
+                assetId = UUID.fromString(raw.trim());
+            } catch (IllegalArgumentException e) {
+                responseObserver.onError(
+                        Status.INVALID_ARGUMENT.withDescription("asset_id is not a valid UUID").asRuntimeException()
+                );
+                return;
+            }
+
+            var opt = assetItemRepository.findById(assetId);
+            if (opt.isEmpty()) {
+                responseObserver.onError(
+                        Status.NOT_FOUND.withDescription("Asset not found: " + assetId).asRuntimeException()
+                );
+                return;
+            }
+
+            responseObserver.onNext(assetGrpcMapper.toDto(opt.get()));
+            responseObserver.onCompleted();
+        } catch (DataAccessException dae) {
+            log.error("DB error in getAssetById", dae);
+            responseObserver.onError(
+                    Status.UNAVAILABLE.withDescription("Database unavailable").withCause(dae).asRuntimeException()
+            );
+        } catch (Exception ex) {
+            log.error("Unexpected error in getAssetById", ex);
+            responseObserver.onError(
+                    Status.INTERNAL.withDescription("Internal server error").withCause(ex).asRuntimeException()
+            );
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public void getAssetItemsByHouseId(GetAssetItemsByHouseIdRequest request,
                                        StreamObserver<GetAssetItemsResponse> responseObserver) {
         try {
