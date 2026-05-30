@@ -28,13 +28,17 @@ import com.isums.houseservice.grpc.FunctionalAreaResponse;
 import com.isums.houseservice.grpc.HouseResponse;
 import common.i18n.TranslationMap;
 import common.paginations.cache.CachedPageService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -47,6 +51,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,9 +72,21 @@ class AssetItemServiceImplTest {
     @Mock private CachedPageService cachedPageService;
     @Mock private AssetEventImageRepository assetEventImageRepository;
     @Mock private TranslationAutoFillService translationAutoFillService;
+    @Mock private TransactionTemplate transactionTemplate;
     @Mock private HouseGrpcImpl houseGrpc;
 
     @InjectMocks private AssetItemServiceImpl service;
+
+    @BeforeEach
+    void runTransactionCallbacks() {
+        lenient().doAnswer(invocation -> {
+            java.util.function.Consumer<?> action = invocation.getArgument(0);
+            @SuppressWarnings("unchecked")
+            java.util.function.Consumer<Object> typed = (java.util.function.Consumer<Object>) action;
+            typed.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+    }
 
     @Test
     @DisplayName("create auto-fills translations from Vietnamese-only displayName")
@@ -335,6 +353,47 @@ class AssetItemServiceImplTest {
 
         assertThat(service.getAssetCountByFunctionArea(houseId)).isEqualTo(counts);
         verify(assetItemRepository).countByHouseIdGroupByFunctionAreaId(houseId);
+    }
+
+    @Test
+    @DisplayName("uploadAssetImages uploads to S3 outside the DB replacement step")
+    void uploadAssetImagesUploadsBeforeReplacingRows() {
+        UUID assetId = UUID.randomUUID();
+        AssetItem asset = AssetItem.builder().id(assetId).build();
+        AssetImage oldImage = AssetImage.builder()
+                .assetItem(asset)
+                .key("asset/old.jpg")
+                .createdAt(Instant.parse("2026-05-30T01:00:00Z"))
+                .build();
+        MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
+
+        when(assetItemRepository.existsById(assetId)).thenReturn(true);
+        when(s3.upload(file, "asset/" + assetId)).thenReturn("asset/new.jpg");
+        when(assetItemRepository.findById(assetId)).thenReturn(Optional.of(asset));
+        when(assetEventRepository.save(any(AssetEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(assetImageRepository.findByAssetItemId(assetId)).thenReturn(List.of(oldImage));
+        when(assetImageRepository.save(any(AssetImage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(s3.getImageUrl("asset/new.jpg")).thenReturn("https://isums.pro/asset/new.jpg");
+        when(assetMapper.mapAssetItem(asset)).thenReturn(new AssetItemDto());
+
+        service.uploadAssetImages(assetId, List.of(file));
+
+        InOrder order = inOrder(assetItemRepository, s3, assetImageRepository);
+        order.verify(assetItemRepository).existsById(assetId);
+        order.verify(s3).upload(file, "asset/" + assetId);
+        order.verify(assetItemRepository).findById(assetId);
+        order.verify(assetImageRepository).deleteAll(List.of(oldImage));
+
+        ArgumentCaptor<List<AssetEventImage>> beforeCaptor = ArgumentCaptor.forClass(List.class);
+        verify(assetEventImageRepository).saveAll(beforeCaptor.capture());
+        assertThat(beforeCaptor.getValue())
+                .extracting(AssetEventImage::getType, AssetEventImage::getKey)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(AssetEventImageType.BEFORE, "asset/old.jpg"));
+
+        ArgumentCaptor<AssetEventImage> afterCaptor = ArgumentCaptor.forClass(AssetEventImage.class);
+        verify(assetEventImageRepository).save(afterCaptor.capture());
+        assertThat(afterCaptor.getValue().getType()).isEqualTo(AssetEventImageType.AFTER);
+        assertThat(afterCaptor.getValue().getKey()).isEqualTo("asset/new.jpg");
     }
 
     @Test

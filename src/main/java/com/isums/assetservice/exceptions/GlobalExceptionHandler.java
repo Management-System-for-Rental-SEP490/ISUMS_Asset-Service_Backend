@@ -13,6 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
@@ -71,6 +72,20 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(res.getStatusCode()).body(res);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        String message = msg("error.upload_too_large");
+        ApiResponse<Void> res = ApiResponses.fail(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                message,
+                List.of(ApiError.builder()
+                        .code("PAYLOAD_TOO_LARGE")
+                        .message(message)
+                        .build())
+        );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(res);
     }
 
     @ExceptionHandler(Exception.class)

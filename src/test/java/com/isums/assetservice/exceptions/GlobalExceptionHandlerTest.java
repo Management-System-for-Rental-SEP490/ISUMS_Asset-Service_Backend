@@ -8,6 +8,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,6 +22,7 @@ class GlobalExceptionHandlerTest {
     {
         messageSource.addMessage("error.serial_exists", java.util.Locale.ENGLISH, "Serial number already exists");
         messageSource.addMessage("error.data_integrity", java.util.Locale.ENGLISH, "Data integrity violation");
+        messageSource.addMessage("error.upload_too_large", java.util.Locale.ENGLISH, "Image too large");
     }
 
     @Test
@@ -50,6 +52,17 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ApiResponse<Void>> res = handler.handleGeneric(new Exception("boom"));
         assertThat(res.getStatusCode().value()).isEqualTo(500);
         assertThat(res.getBody().getErrors().get(0).getCode()).isEqualTo("INTERNAL_ERROR");
+    }
+
+    @Test
+    @DisplayName("handleMaxUploadSize returns 413 with PAYLOAD_TOO_LARGE code")
+    void maxUploadSize() {
+        ResponseEntity<ApiResponse<Void>> res =
+                handler.handleMaxUploadSize(new MaxUploadSizeExceededException(10));
+
+        assertThat(res.getStatusCode().value()).isEqualTo(413);
+        assertThat(res.getBody().getErrors().get(0).getCode()).isEqualTo("PAYLOAD_TOO_LARGE");
+        assertThat(res.getBody().getMessage()).isIn("Image too large", "error.upload_too_large");
     }
 
     @Test

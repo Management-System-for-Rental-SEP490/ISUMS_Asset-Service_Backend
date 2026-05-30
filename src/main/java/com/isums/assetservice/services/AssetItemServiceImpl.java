@@ -34,7 +34,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
@@ -61,6 +63,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     private final CachedPageService cachedPageService;
     private final AssetEventImageRepository assetEventImageRepository;
     private final TranslationAutoFillService translationAutoFillService;
+    private final TransactionTemplate transactionTemplate;
 
     private static final String PAGE_NS = "assets";
     @Override
@@ -208,6 +211,7 @@ public class AssetItemServiceImpl implements AssetItemService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AssetCountByFunctionAreaDto> getAssetCountByFunctionArea(UUID houseId) {
         try {
             return assetItemRepository.countByHouseIdGroupByFunctionAreaId(houseId);
@@ -257,14 +261,33 @@ public class AssetItemServiceImpl implements AssetItemService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void uploadAssetImages(UUID assetId, List<MultipartFile> files) {
-        boolean isExist = assetItemRepository.existsById(assetId);
-        if(!isExist){
-            throw new NotFoundException("Asset not found :  " + assetId);
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("No image files provided");
         }
 
-        AssetItem item = assetItemRepository.getReferenceById(assetId);
+        transactionTemplate.executeWithoutResult(status -> {
+            if (!assetItemRepository.existsById(assetId)) {
+                throw new NotFoundException("Asset not found :  " + assetId);
+            }
+        });
+
+        List<String> uploadedKeys = new ArrayList<>();
+        try {
+            for (MultipartFile file : files) {
+                uploadedKeys.add(s3.upload(file, "asset/" + assetId));
+            }
+            transactionTemplate.executeWithoutResult(status -> replaceAssetImages(assetId, uploadedKeys));
+        } catch (RuntimeException ex) {
+            uploadedKeys.forEach(s3::delete);
+            throw ex;
+        }
+    }
+
+    private void replaceAssetImages(UUID assetId, List<String> uploadedKeys) {
+        AssetItem item = assetItemRepository.findById(assetId)
+                .orElseThrow(() -> new NotFoundException("Asset not found :  " + assetId));
 
         AssetEvent event = assetEventRepository.save(
                 AssetEvent.builder()
@@ -274,25 +297,20 @@ public class AssetItemServiceImpl implements AssetItemService {
         );
 
         List<AssetImage> currentAssetImages = assetImageRepository.findByAssetItemId(assetId);
-        for (AssetImage prev : currentAssetImages) {
-            assetEventImageRepository.save(
-                    AssetEventImage.builder()
-                            .event(event)
-                            .key(prev.getKey())
-                            .type(com.isums.assetservice.domains.enums.AssetEventImageType.BEFORE)
-                            .createdAt(prev.getCreatedAt() != null ? prev.getCreatedAt() : Instant.now())
-                            .build()
-            );
-        }
-
+        List<AssetEventImage> beforeImages = currentAssetImages.stream()
+                .map(prev -> AssetEventImage.builder()
+                        .event(event)
+                        .key(prev.getKey())
+                        .type(AssetEventImageType.BEFORE)
+                        .createdAt(prev.getCreatedAt() != null ? prev.getCreatedAt() : Instant.now())
+                        .build())
+                .toList();
+        assetEventImageRepository.saveAll(beforeImages);
         assetImageRepository.deleteAll(currentAssetImages);
 
         List<AssetImageDto> imageDtos = new ArrayList<>();
 
-        for (MultipartFile file : files) {
-
-            String key = s3.upload(file, "asset/" + assetId);
-
+        for (String key : uploadedKeys) {
             AssetImage saved = assetImageRepository.save(
                     AssetImage.builder()
                             .assetItem(item)
